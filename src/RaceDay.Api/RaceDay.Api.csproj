@@ -7,6 +7,8 @@
     <!-- XML comments feed the endpoint descriptions shown in Swagger -->
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <NoWarn>$(NoWarn);1591</NoWarn>
+    <!-- run on a newer .NET (e.g. 10) when the .NET 8 runtime is not installed -->
+    <RollForward>Major</RollForward>
   </PropertyGroup>
 
   <ItemGroup>
