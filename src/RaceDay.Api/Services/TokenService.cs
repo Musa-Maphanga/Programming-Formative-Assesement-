@@ -6,30 +6,29 @@ using Microsoft.IdentityModel.Tokens;
 
 namespace RaceDay.Api.Services;
 
-/// <summary>Settings from the "Jwt" section of appsettings.json.</summary>
+// Values from the "Jwt" section in appsettings.json
 public class JwtSettings
 {
     public const string SectionName = "Jwt";
 
     public string Issuer { get; set; } = "RaceDay.Api";
     public string Audience { get; set; } = "RaceDay.Clients";
-
-    /// <summary>Signing key. Must be at least 32 characters. Use user-secrets or an environment variable outside development.</summary>
-    public string Key { get; set; } = string.Empty;
-
+    public string Key { get; set; } = string.Empty; // at least 32 characters
     public int ExpiryMinutes { get; set; } = 120;
+}
+
+// Custom claim names used in RaceDay tokens
+public static class RaceDayClaims
+{
+    public const string SessionId = "session_id";
 }
 
 public interface ITokenService
 {
-    (string Token, DateTime ExpiresAt) CreateToken(int userId, string email, string fullName, string role);
+    (string Token, DateTime ExpiresAt) CreateToken(int userId, string email, string fullName, string role, string sessionId, DateTime expiresAt);
 }
 
-/// <summary>
-/// Creates the signed JWT that acts as the user's session. The token carries the user's id and role,
-/// is sent with every request, and is checked by the JwtBearer middleware before any controller runs.
-/// When it expires the user has to log in again.
-/// </summary>
+// Builds the signed JWT returned at login. It carries the user id, role and session id.
 public class JwtTokenService : ITokenService
 {
     private readonly JwtSettings _settings;
@@ -39,16 +38,15 @@ public class JwtTokenService : ITokenService
         _settings = settings.Value;
     }
 
-    public (string Token, DateTime ExpiresAt) CreateToken(int userId, string email, string fullName, string role)
+    public (string Token, DateTime ExpiresAt) CreateToken(int userId, string email, string fullName, string role, string sessionId, DateTime expiresAt)
     {
-        var expiresAt = DateTime.UtcNow.AddMinutes(_settings.ExpiryMinutes);
-
         var claims = new List<Claim>
         {
             new(ClaimTypes.NameIdentifier, userId.ToString()),
             new(ClaimTypes.Email, email),
             new(ClaimTypes.Name, fullName),
             new(ClaimTypes.Role, role),
+            new(RaceDayClaims.SessionId, sessionId),
             new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
         };
 
