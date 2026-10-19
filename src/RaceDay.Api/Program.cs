@@ -11,11 +11,11 @@ using RaceDay.Api.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// ---------- Database (EF Core, code-first, SQL Server) ----------
+// Database
 builder.Services.AddDbContext<RaceDayDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("RaceDayDb")));
 
-// ---------- Services ----------
+// Services
 builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection(JwtSettings.SectionName));
 builder.Services.AddScoped<IPasswordHasher, BcryptPasswordHasher>();
 builder.Services.AddScoped<ITokenService, JwtTokenService>();
@@ -25,12 +25,14 @@ builder.Services.AddHttpClient<IWeatherService, OpenMeteoWeatherService>(client 
     client.Timeout = TimeSpan.FromSeconds(10);
 });
 
-// ---------- Authentication: JWT bearer tokens ----------
-// The token is the user's session: it is issued at login, sent with every request in the
-// Authorization header, and carries the user's id and role until it expires.
+// Server-side sessions (user id + role), kept in memory
+builder.Services.AddDistributedMemoryCache();
+builder.Services.AddSingleton<IUserSessionStore, DistributedCacheSessionStore>();
+
+// Authentication: JWT holds the session id, the session holds the user
 var jwt = builder.Configuration.GetSection(JwtSettings.SectionName).Get<JwtSettings>() ?? new JwtSettings();
 if (string.IsNullOrWhiteSpace(jwt.Key) || jwt.Key.Length < 32)
-    throw new InvalidOperationException("Jwt:Key must be set and be at least 32 characters long.");
+    throw new InvalidOperationException("Jwt:Key must be at least 32 characters.");
 
 builder.Services
     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -49,13 +51,41 @@ builder.Services
             RoleClaimType = ClaimTypes.Role,
             NameClaimType = ClaimTypes.Name
         };
+
+        // After the token checks out, make sure its session still exists on the server
+        options.Events = new JwtBearerEvents
+        {
+            OnTokenValidated = async context =>
+            {
+                var principal = context.Principal!;
+                var sessionId = principal.FindFirstValue(RaceDayClaims.SessionId);
+                var sessions = context.HttpContext.RequestServices.GetRequiredService<IUserSessionStore>();
+                var session = sessionId is null ? null : await sessions.GetAsync(sessionId);
+
+                if (session is null)
+                {
+                    context.Fail("Session has ended. Please log in again.");
+                    return;
+                }
+
+                var userId = principal.FindFirstValue(ClaimTypes.NameIdentifier);
+                var role = principal.FindFirstValue(ClaimTypes.Role);
+                if (userId != session.UserId.ToString() || role != session.Role)
+                {
+                    context.Fail("Token does not match the session.");
+                    return;
+                }
+
+                context.HttpContext.Items[nameof(SessionInfo)] = session;
+            }
+        };
     });
 builder.Services.AddAuthorization();
 
 builder.Services.AddControllers();
 builder.Services.AddProblemDetails();
 
-// ---------- Swagger ----------
+// Swagger
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
@@ -63,10 +93,7 @@ builder.Services.AddSwaggerGen(c =>
     {
         Title = "RaceDay API",
         Version = "v1",
-        Description = "API for the RaceDay road running, walking and cycling event system (PROG6212 POE Part 2). " +
-                      "Log in with POST /api/auth/login, click **Authorize** and paste the token. " +
-                      "Sample accounts (password `Password123!`): organiser `thandiwe.nkosi@raceday.co.za`, " +
-                      "participant `sipho.mahlangu@gmail.com`."
+        Description = "RaceDay API (PROG6212 Part 2). Log in with POST /api/auth/login, then click Authorize and paste the token."
     });
 
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
@@ -76,20 +103,20 @@ builder.Services.AddSwaggerGen(c =>
         BearerFormat = "JWT",
         In = ParameterLocation.Header,
         Name = "Authorization",
-        Description = "Paste the token from /api/auth/login (without the word Bearer)."
+        Description = "Paste the token from /api/auth/login."
     });
     c.OperationFilter<AuthorizationOperationFilter>();
 
-    // Group endpoints by the sections of the Part 1 plan, in the same order
-    c.TagActionsBy(api =>
-    {
-        var tag = api.ActionDescriptor.EndpointMetadata.OfType<TagsAttribute>().FirstOrDefault()?.Tags.FirstOrDefault();
-        return new[] { tag ?? api.ActionDescriptor.RouteValues["controller"] ?? "Other" };
-    });
+    // Show sections in the same order as the Part 1 plan
+    string[] sectionOrder = { "Auth", "Profile", "Event Types", "Events", "Categories", "Enrolments", "Results" };
+    string TagOf(Microsoft.AspNetCore.Mvc.ApiExplorer.ApiDescription api) =>
+        api.ActionDescriptor.EndpointMetadata.OfType<TagsAttribute>().FirstOrDefault()?.Tags.FirstOrDefault()
+        ?? api.ActionDescriptor.RouteValues["controller"] ?? "Other";
+    c.TagActionsBy(api => new[] { TagOf(api) });
     c.OrderActionsBy(api =>
     {
-        var tag = api.ActionDescriptor.EndpointMetadata.OfType<TagsAttribute>().FirstOrDefault()?.Tags.FirstOrDefault() ?? "Z";
-        return $"{tag}_{api.RelativePath}_{api.HttpMethod}";
+        var index = Array.IndexOf(sectionOrder, TagOf(api));
+        return $"{(index < 0 ? 99 : index):D2}_{api.RelativePath}_{api.HttpMethod}";
     });
 
     var xmlPath = Path.Combine(AppContext.BaseDirectory, $"{Assembly.GetExecutingAssembly().GetName().Name}.xml");
@@ -99,21 +126,19 @@ builder.Services.AddSwaggerGen(c =>
 
 var app = builder.Build();
 
-// Create/upgrade the database from the EF Core migrations when the app starts.
-// The test project runs with the "Testing" environment and builds its own SQLite database instead.
+// Apply migrations on startup (tests use their own SQLite database)
 if (!app.Environment.IsEnvironment("Testing"))
 {
     using var scope = app.Services.CreateScope();
     scope.ServiceProvider.GetRequiredService<RaceDayDbContext>().Database.Migrate();
 }
 
-// Swagger is on in every environment so the endpoints can always be tested in a browser
 app.UseSwagger();
 app.UseSwaggerUI(c =>
 {
     c.SwaggerEndpoint("/swagger/v1/swagger.json", "RaceDay API v1");
     c.DocumentTitle = "RaceDay API";
-    c.DisplayRequestDuration();
+    c.DefaultModelsExpandDepth(-1); // hide the Schemas list at the bottom
 });
 
 app.UseHttpsRedirection();
@@ -123,5 +148,5 @@ app.MapControllers();
 
 app.Run();
 
-// Lets the test project start the API in memory with WebApplicationFactory<Program>
+// Needed by the tests (WebApplicationFactory<Program>)
 public partial class Program { }

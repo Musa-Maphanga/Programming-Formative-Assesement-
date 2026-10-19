@@ -9,38 +9,34 @@ using RaceDay.Api.Services;
 
 namespace RaceDay.Api.Controllers;
 
-/// <summary>1. Authentication – register and log in.</summary>
+// Register, log in and log out
 [Route("api/auth")]
-[AllowAnonymous]
-[Tags("1. Authentication")]
+[Tags("Auth")]
 public class AuthController : RaceDayControllerBase
 {
     private readonly IPasswordHasher _hasher;
     private readonly ITokenService _tokens;
+    private readonly IUserSessionStore _sessions;
 
-    public AuthController(RaceDayDbContext db, IPasswordHasher hasher, ITokenService tokens) : base(db)
+    public AuthController(RaceDayDbContext db, IPasswordHasher hasher, ITokenService tokens, IUserSessionStore sessions) : base(db)
     {
         _hasher = hasher;
         _tokens = tokens;
+        _sessions = sessions;
     }
 
     /// <summary>Lets a new user sign up as either an Organiser or a Participant.</summary>
-    /// <remarks>
-    /// The role must be exactly one of the two roles in the Roles table ("Organiser" or "Participant").
-    /// Anything else, such as "Admin", is rejected, so nobody can give themselves extra rights.
-    /// The password is hashed with BCrypt before it is saved and is never returned.
-    /// </remarks>
     /// <response code="201">The new user's details (without the password).</response>
     /// <response code="400">Missing or invalid fields, an unknown role, or a weak password.</response>
     /// <response code="409">The email is already registered.</response>
     [HttpPost("register")]
+    [AllowAnonymous]
     [ProducesResponseType(typeof(UserProfileResponse), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     public async Task<ActionResult<UserProfileResponse>> Register(RegisterRequest request)
     {
-        // Only the two roles that exist in the Roles table are allowed (case-insensitive input,
-        // stored with the exact name from the table).
+        // Only "Organiser" or "Participant" (any capitalisation) - nobody can sign up as e.g. "Admin"
         var roleName = RoleNames.All.FirstOrDefault(r => string.Equals(r, request.Role?.Trim(), StringComparison.OrdinalIgnoreCase));
         if (roleName is null)
             return FieldError(nameof(request.Role), "Role must be either 'Organiser' or 'Participant'.");
@@ -67,7 +63,7 @@ public class AuthController : RaceDayControllerBase
             FirstName = request.FirstName.Trim(),
             LastName = request.LastName.Trim(),
             Email = email,
-            PasswordHash = _hasher.Hash(request.Password),
+            PasswordHash = _hasher.Hash(request.Password), // never store the plain password
             PhoneNumber = request.PhoneNumber,
             DateOfBirth = request.DateOfBirth,
             Gender = request.Gender,
@@ -83,15 +79,11 @@ public class AuthController : RaceDayControllerBase
     }
 
     /// <summary>Checks the user's email and password and gives back a token so they can use the system.</summary>
-    /// <remarks>
-    /// The token holds the user's id and role and lasts for the time set in appsettings (Jwt:ExpiryMinutes).
-    /// In Swagger, click **Authorize** and paste the token to call the protected endpoints.
-    /// All the sample accounts use the password `Password123!`.
-    /// </remarks>
     /// <response code="200">{ token, expiresAt, userId, role }</response>
     /// <response code="400">Email or password missing.</response>
     /// <response code="401">The email or password is wrong.</response>
     [HttpPost("login")]
+    [AllowAnonymous]
     [ProducesResponseType(typeof(LoginResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
@@ -100,11 +92,14 @@ public class AuthController : RaceDayControllerBase
         var email = request.Email.Trim().ToLowerInvariant();
         var user = await Db.Users.Include(u => u.Role).FirstOrDefaultAsync(u => u.Email == email);
 
-        // Same message for "no such email" and "wrong password" so the API doesn't reveal which emails exist
+        // Same message either way so we don't reveal which emails exist
         if (user is null || !_hasher.Verify(request.Password, user.PasswordHash))
             return ApiError(StatusCodes.Status401Unauthorized, "The email or password is incorrect.");
 
-        var (token, expiresAt) = _tokens.CreateToken(user.UserId, user.Email, FullName(user), user.Role.RoleName);
+        // Start a server-side session, then give back a token that points to it
+        var session = await _sessions.CreateAsync(user.UserId, user.Role.RoleName);
+        var (token, expiresAt) = _tokens.CreateToken(user.UserId, user.Email, FullName(user), user.Role.RoleName,
+            session.SessionId, session.ExpiresAt);
 
         return Ok(new LoginResponse
         {
@@ -113,5 +108,17 @@ public class AuthController : RaceDayControllerBase
             UserId = user.UserId,
             Role = user.Role.RoleName
         });
+    }
+
+    /// <summary>Logs the user out by ending their server-side session.</summary>
+    /// <response code="204">Logged out.</response>
+    [HttpPost("logout")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> Logout()
+    {
+        if (CurrentSession is not null)
+            await _sessions.RemoveAsync(CurrentSession.SessionId);
+        return NoContent();
     }
 }

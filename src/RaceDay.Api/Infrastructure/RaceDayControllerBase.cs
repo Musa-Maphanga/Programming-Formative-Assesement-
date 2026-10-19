@@ -3,13 +3,11 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RaceDay.Api.Data;
 using RaceDay.Api.Models;
+using RaceDay.Api.Services;
 
 namespace RaceDay.Api.Infrastructure;
 
-/// <summary>
-/// Shared helpers for the RaceDay controllers: reading the logged-in user from the token,
-/// checking their role against the database, and returning consistent error bodies.
-/// </summary>
+// Shared helpers for all RaceDay controllers
 [ApiController]
 [Produces("application/json")]
 public abstract class RaceDayControllerBase : ControllerBase
@@ -21,17 +19,18 @@ public abstract class RaceDayControllerBase : ControllerBase
         Db = db;
     }
 
-    /// <summary>The UserId stored in the token (the NameIdentifier claim).</summary>
-    protected int CurrentUserId =>
-        int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var id) ? id : 0;
+    // The logged-in user's server-side session (null on public endpoints)
+    protected SessionInfo? CurrentSession => HttpContext.Items[nameof(SessionInfo)] as SessionInfo;
 
-    /// <summary>
-    /// Loads the logged-in user and confirms that their role in the database is the one required.
-    /// The [Authorize(Roles = ...)] attribute already checks the role inside the token, but the
-    /// Users.RoleId foreign key cannot stop, say, a Participant's id ending up in Events.OrganiserId.
-    /// Checking the stored role here is what enforces that rule (Part 1 feedback).
-    /// Returns the user, or an error result (401 if the account no longer exists, 403 if the role is wrong).
-    /// </summary>
+    // The logged-in user's id, taken from the session
+    protected int CurrentUserId =>
+        CurrentSession?.UserId
+        ?? (int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var id) ? id : 0);
+
+    // Loads the logged-in user and checks their role in the database.
+    // [Authorize(Roles = ...)] only checks the token. The foreign keys can't stop a Participant's id
+    // ending up in Events.OrganiserId, so the stored role is checked here (Part 1 feedback).
+    // Returns 401 if the account is gone, 403 if the role is wrong.
     protected async Task<(User? User, ActionResult? Error)> RequireUserInRoleAsync(string requiredRole)
     {
         var user = await Db.Users.Include(u => u.Role).FirstOrDefaultAsync(u => u.UserId == CurrentUserId);
@@ -44,7 +43,7 @@ public abstract class RaceDayControllerBase : ControllerBase
         return (user, null);
     }
 
-    /// <summary>Returns a ProblemDetails body with the given status code and message.</summary>
+    // Error response in the standard ProblemDetails format
     protected ObjectResult ApiError(int statusCode, string detail)
     {
         var problem = new ProblemDetails
@@ -68,7 +67,7 @@ public abstract class RaceDayControllerBase : ControllerBase
     protected ObjectResult NotOwner(string what = "events") =>
         ApiError(StatusCodes.Status403Forbidden, $"You can only manage your own {what}.");
 
-    /// <summary>Adds a field error and returns a 400 in the same shape as the automatic model validation.</summary>
+    // 400 with a field error, same shape as the automatic validation errors
     protected ActionResult FieldError(string field, string message)
     {
         ModelState.AddModelError(field, message);
