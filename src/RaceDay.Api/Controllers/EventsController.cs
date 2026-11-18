@@ -73,7 +73,7 @@ public class EventsController : RaceDayControllerBase
         detail.Categories = await Db.Categories.AsNoTracking()
             .Where(c => c.EventId == id)
             .OrderBy(c => c.CategoryId)
-            .Select(c => CategoriesController.ToResponse(c))
+            .Select(CategoriesController.Projection)
             .ToListAsync();
 
         return Ok(detail);
@@ -284,6 +284,67 @@ public class EventsController : RaceDayControllerBase
         }
     }
 
+    /// <summary>Uploads or replaces the banner image shown on an event.</summary>
+    /// <remarks>
+    /// Send the image as multipart/form-data under the field name "file". Only the organiser who
+    /// owns the event can do this. The API stores the image in Azure Blob Storage and saves the URL
+    /// against the event, so the web front end never contacts Azure itself.
+    /// </remarks>
+    /// <param name="id">The EventId.</param>
+    /// <param name="file">A JPEG, PNG or WebP image.</param>
+    /// <param name="storage">Injected image storage.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <response code="200">The stored image URL.</response>
+    /// <response code="400">No file, or the file is not an acceptable image.</response>
+    /// <response code="403">Not the owner.</response>
+    /// <response code="404">The event does not exist.</response>
+    /// <response code="503">Image storage is not configured or not reachable.</response>
+    [HttpPost("events/{id:int}/banner")]
+    [Authorize(Roles = RoleNames.Organiser)]
+    [ProducesResponseType(typeof(UploadResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable)]
+    public async Task<ActionResult<UploadResponse>> UploadBanner(
+        int id, IFormFile? file, [FromServices] IImageStorage storage, CancellationToken ct)
+    {
+        var (organiser, error) = await RequireUserInRoleAsync(RoleNames.Organiser);
+        if (error is not null) return error;
+
+        if (file is null)
+            return ApiError(StatusCodes.Status400BadRequest, "Attach an image under the field name \"file\".");
+
+        var ev = await Db.Events.FirstOrDefaultAsync(e => e.EventId == id, ct);
+        if (ev is null)
+            return ApiError(StatusCodes.Status404NotFound, $"Event {id} does not exist.");
+        if (ev.OrganiserId != organiser!.UserId)
+            return NotOwner();
+
+        try
+        {
+            var previous = ev.BannerImageUrl;
+
+            var url = await storage.UploadAsync(AzureStorageContainers.EventBanners, file, $"event-{id}", ct);
+
+            ev.BannerImageUrl = url;
+            await Db.SaveChangesAsync(ct);
+
+            // Only remove the old image once the new one is saved against the event.
+            if (!string.IsNullOrEmpty(previous) && previous != url)
+                await storage.DeleteAsync(previous, ct);
+
+            return Ok(new UploadResponse { Url = url });
+        }
+        catch (ImageRejectedException ex)
+        {
+            return ApiError(StatusCodes.Status400BadRequest, ex.Message);
+        }
+        catch (ImageStorageUnavailableException ex)
+        {
+            return ApiError(StatusCodes.Status503ServiceUnavailable, ex.Message);
+        }
+    }
+
     // ---------------- helpers ----------------
 
     private ActionResult? CheckCoordinates(CreateEventRequest request)
@@ -326,6 +387,7 @@ public class EventsController : RaceDayControllerBase
             MaxParticipants = e.MaxParticipants,
             EnrolledCount = e.Enrolments.Count(en => en.Status == EnrolmentStatuses.Confirmed),
             Status = e.Status,
+            BannerImageUrl = e.BannerImageUrl,
             OrganiserId = e.OrganiserId,
             OrganiserName = e.Organiser.FirstName + " " + e.Organiser.LastName,
             CreatedAt = e.CreatedAt
@@ -348,6 +410,7 @@ public class EventsController : RaceDayControllerBase
         MaxParticipants = e.MaxParticipants,
         EnrolledCount = e.EnrolledCount,
         Status = e.Status,
+        BannerImageUrl = e.BannerImageUrl,
         OrganiserId = e.OrganiserId,
         OrganiserName = e.OrganiserName,
         CreatedAt = e.CreatedAt
