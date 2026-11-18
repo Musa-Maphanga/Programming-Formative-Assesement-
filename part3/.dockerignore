@@ -1,0 +1,15 @@
+# Keeping build output and local settings out of the build context makes the
+# image smaller and stops a stale local build leaking into it.
+**/bin/
+**/obj/
+**/.vs/
+**/.vscode/
+**/.idea/
+**/*.user
+**/appsettings.Development.json
+**/.git/
+**/.gitignore
+**/Dockerfile*
+**/docker-compose*
+**/README.md
+**/NuGet.config
