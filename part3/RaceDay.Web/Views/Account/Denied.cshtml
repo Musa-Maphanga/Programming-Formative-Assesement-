@@ -1,0 +1,18 @@
+@{
+    ViewData["Title"] = "Not available on this account";
+}
+
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-6">
+            <div class="rd-panel rd-panel-pad my-5 text-center">
+                <h1 class="mb-2">That page belongs to another role</h1>
+                <p class="rd-lede mx-auto mb-4">
+                    You are signed in as a @(Context.Session.GetRole()?.ToLower() ?? "user"), and that page is
+                    part of a different role's tools. Nothing is wrong with your account.
+                </p>
+                <a class="btn btn-rd" asp-controller="Home" asp-action="Index">Back to my pages</a>
+            </div>
+        </div>
+    </div>
+</div>

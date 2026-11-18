@@ -1,0 +1,114 @@
+@model RegisterViewModel
+@{
+    ViewData["Title"] = "Create an account";
+}
+
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-9 col-lg-7">
+            <div class="rd-panel rd-panel-pad my-5">
+                <h1 class="mb-1">Create an account</h1>
+                <p class="rd-lede mb-4">
+                    One account covers every race on RaceDay, and keeps a record of everything you run.
+                </p>
+
+                <form asp-action="Register" method="post" novalidate>
+                    @Html.AntiForgeryToken()
+
+                    <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
+
+                    <fieldset class="mb-4">
+                        <legend class="form-label">I am joining RaceDay to</legend>
+                        <div class="d-flex flex-wrap gap-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" asp-for="Role"
+                                       value="Participant" id="role-participant" />
+                                <label class="form-check-label" for="role-participant">
+                                    <strong>Enter races</strong>
+                                    <span class="d-block rd-meta">Browse events, enter, and track my results.</span>
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" asp-for="Role"
+                                       value="Organiser" id="role-organiser" />
+                                <label class="form-check-label" for="role-organiser">
+                                    <strong>Organise races</strong>
+                                    <span class="d-block rd-meta">Create events, manage entries, publish results.</span>
+                                </label>
+                            </div>
+                        </div>
+                        <span asp-validation-for="Role" class="text-danger small"></span>
+                        <p class="rd-meta mt-2 mb-0">This decides what you can do, and cannot be changed later.</p>
+                    </fieldset>
+
+                    <div class="row g-3">
+                        <div class="col-sm-6">
+                            <label asp-for="FirstName" class="form-label"></label>
+                            <input asp-for="FirstName" class="form-control" autocomplete="given-name" autofocus />
+                            <span asp-validation-for="FirstName" class="text-danger small"></span>
+                        </div>
+                        <div class="col-sm-6">
+                            <label asp-for="LastName" class="form-label"></label>
+                            <input asp-for="LastName" class="form-control" autocomplete="family-name" />
+                            <span asp-validation-for="LastName" class="text-danger small"></span>
+                        </div>
+
+                        <div class="col-12">
+                            <label asp-for="Email" class="form-label"></label>
+                            <input asp-for="Email" class="form-control" autocomplete="email" />
+                            <span asp-validation-for="Email" class="text-danger small"></span>
+                        </div>
+
+                        <div class="col-sm-6">
+                            <label asp-for="Password" class="form-label">Password</label>
+                            <input asp-for="Password" class="form-control" type="password" autocomplete="new-password" />
+                            <span asp-validation-for="Password" class="text-danger small"></span>
+                        </div>
+                        <div class="col-sm-6">
+                            <label asp-for="ConfirmPassword" class="form-label"></label>
+                            <input asp-for="ConfirmPassword" class="form-control" type="password" autocomplete="new-password" />
+                            <span asp-validation-for="ConfirmPassword" class="text-danger small"></span>
+                        </div>
+
+                        <div class="col-sm-6">
+                            <label asp-for="PhoneNumber" class="form-label"></label>
+                            <input asp-for="PhoneNumber" class="form-control" autocomplete="tel" />
+                            <span asp-validation-for="PhoneNumber" class="text-danger small"></span>
+                        </div>
+                        <div class="col-sm-6">
+                            <label asp-for="DateOfBirth" class="form-label"></label>
+                            <input asp-for="DateOfBirth" class="form-control" type="date" />
+                            <span asp-validation-for="DateOfBirth" class="text-danger small"></span>
+                            <p class="rd-meta mt-1 mb-0">Needed for races with an age limit.</p>
+                        </div>
+
+                        <div class="col-sm-6">
+                            <label asp-for="Gender" class="form-label">Gender</label>
+                            <select asp-for="Gender" class="form-select">
+                                <option value="">Prefer not to say</option>
+                                @foreach (var gender in RegisterViewModel.Genders)
+                                {
+                                    <option value="@gender" selected="@(gender == Model.Gender)">@gender</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="col-sm-6">
+                            <label asp-for="City" class="form-label"></label>
+                            <input asp-for="City" class="form-control" autocomplete="address-level2" />
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-rd mt-4">Create my account</button>
+                </form>
+
+                <p class="rd-meta mt-4 mb-0">
+                    Already registered? <a asp-action="Login">Sign in</a>.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}
