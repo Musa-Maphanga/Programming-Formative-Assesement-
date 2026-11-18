@@ -58,7 +58,7 @@ cd src/RaceDay.Api
 dotnet run
 ```
 
-Swagger is at the root of whichever port it starts on. Log in with
+Swagger is at /swagger on whichever port it starts on. Log in with
 `POST /api/auth/login`, click **Authorize**, and paste the token.
 
 Image uploads need a storage account. Either put the connection string in
