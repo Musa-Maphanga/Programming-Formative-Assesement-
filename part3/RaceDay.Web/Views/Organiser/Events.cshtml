@@ -1,0 +1,101 @@
+@model List<EventDto>
+@{
+    ViewData["Title"] = "My events";
+}
+
+<div class="container">
+    <div class="rd-page-head">
+        <div>
+            <h1 class="mb-1">My events</h1>
+            <p class="rd-meta mb-0">Every race you have created, upcoming and past.</p>
+        </div>
+        <a class="btn btn-rd" asp-action="Create">Create an event</a>
+    </div>
+
+    @if (!Model.Any())
+    {
+        <div class="rd-empty">
+            <h3>Nothing here yet</h3>
+            <p>Create an event, add its distances, and participants can start entering.</p>
+            <a class="btn btn-rd mt-3" asp-action="Create">Create an event</a>
+        </div>
+    }
+    else
+    {
+        <div class="rd-table-wrap">
+            <table class="rd-table">
+                <thead>
+                <tr>
+                    <th>Event</th>
+                    <th>Date</th>
+                    <th class="rd-num">Entries</th>
+                    <th>Status</th>
+                    <th>Manage</th>
+                </tr>
+                </thead>
+                <tbody>
+                @foreach (var raceEvent in Model.OrderByDescending(e => e.EventDate))
+                {
+                    <tr>
+                        <td>
+                            <strong>@raceEvent.Name</strong>
+                            <div class="rd-meta">@raceEvent.Location, @raceEvent.City</div>
+                        </td>
+                        <td>
+                            @raceEvent.EventDate.ToString("ddd d MMM yyyy")
+                            <div class="rd-meta">@raceEvent.EventDate.ToString("HH:mm")</div>
+                        </td>
+                        <td class="rd-num">
+                            @raceEvent.EnrolledCount@(raceEvent.MaxParticipants.HasValue ? $" / {raceEvent.MaxParticipants}" : "")
+                        </td>
+                        <td><partial name="_StatusBadge" model="raceEvent.Status" /></td>
+                        <td>
+                            <div class="d-flex flex-wrap gap-1">
+                                <a class="btn btn-rd-outline btn-sm" asp-action="Edit" asp-route-id="@raceEvent.EventId">Edit</a>
+                                <a class="btn btn-rd-outline btn-sm" asp-action="Categories" asp-route-id="@raceEvent.EventId">Categories</a>
+                                <a class="btn btn-rd-outline btn-sm" asp-action="Enrolments" asp-route-id="@raceEvent.EventId">Entries</a>
+
+                                @if (raceEvent.HasTakenPlace && raceEvent.Status != EventStatuses.Cancelled)
+                                {
+                                    <a class="btn btn-rd btn-sm" asp-action="Results" asp-route-id="@raceEvent.EventId">Results</a>
+                                }
+
+                                @if (raceEvent.Status == EventStatuses.Upcoming)
+                                {
+                                    <form asp-action="SetStatus" method="post" class="d-inline"
+                                          onsubmit="return confirm('Cancel @raceEvent.Name? Entrants keep it in their history.');">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="id" value="@raceEvent.EventId" />
+                                        <input type="hidden" name="status" value="@EventStatuses.Cancelled" />
+                                        <button type="submit" class="btn btn-rd-outline btn-sm">Cancel race</button>
+                                    </form>
+                                }
+
+                                @if (raceEvent.HasTakenPlace && raceEvent.Status == EventStatuses.Upcoming)
+                                {
+                                    <form asp-action="SetStatus" method="post" class="d-inline">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="id" value="@raceEvent.EventId" />
+                                        <input type="hidden" name="status" value="@EventStatuses.Completed" />
+                                        <button type="submit" class="btn btn-rd-outline btn-sm">Mark completed</button>
+                                    </form>
+                                }
+
+                                @if (raceEvent.EnrolledCount == 0)
+                                {
+                                    <form asp-action="Delete" method="post" class="d-inline"
+                                          onsubmit="return confirm('Delete @raceEvent.Name? This cannot be undone.');">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="id" value="@raceEvent.EventId" />
+                                        <button type="submit" class="btn btn-rd-outline btn-sm">Delete</button>
+                                    </form>
+                                }
+                            </div>
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>

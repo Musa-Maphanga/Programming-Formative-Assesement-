@@ -1,0 +1,127 @@
+@model CategoryFormViewModel
+@{
+    ViewData["Title"] = "Categories";
+}
+
+<div class="container">
+    <div class="rd-page-head">
+        <div>
+            <h1 class="mb-1">Categories</h1>
+            <p class="rd-meta mb-0">@Model.EventName</p>
+        </div>
+        <div class="d-flex gap-2">
+            <a class="btn btn-rd-outline" asp-action="Enrolments" asp-route-id="@Model.EventId">Entries</a>
+            <a class="btn btn-rd-outline" asp-action="Events">Back to my events</a>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-lg-7">
+            @if (!Model.ExistingCategories.Any())
+            {
+                <div class="rd-empty">
+                    <h3>No categories yet</h3>
+                    <p>Add at least one distance so that people have something to enter.</p>
+                </div>
+            }
+            else
+            {
+                <div class="rd-table-wrap">
+                    <table class="rd-table">
+                        <thead>
+                        <tr>
+                            <th>Category</th>
+                            <th class="rd-num">Distance</th>
+                            <th class="rd-num">Fee</th>
+                            <th>Ages</th>
+                            <th class="rd-num">Entered</th>
+                            <th></th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        @foreach (var category in Model.ExistingCategories.OrderByDescending(c => c.DistanceKm))
+                        {
+                            <tr>
+                                <td><strong>@category.Name</strong></td>
+                                <td class="rd-num">@category.DistanceKm.ToString("0.##") km</td>
+                                <td class="rd-num">R@(category.EntryFee.ToString("0.00"))</td>
+                                <td>@(string.IsNullOrEmpty(category.AgeLimitDisplay) ? "Open" : category.AgeLimitDisplay)</td>
+                                <td class="rd-num">@category.EnrolledCount</td>
+                                <td>
+                                    @if (category.EnrolledCount == 0)
+                                    {
+                                        <form asp-action="DeleteCategory" method="post" class="d-inline"
+                                              onsubmit="return confirm('Remove @category.Name?');">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="eventId" value="@Model.EventId" />
+                                            <input type="hidden" name="categoryId" value="@category.CategoryId" />
+                                            <button type="submit" class="btn btn-rd-outline btn-sm">Remove</button>
+                                        </form>
+                                    }
+                                    else
+                                    {
+                                        <span class="rd-meta">In use</span>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+
+        <div class="col-lg-5">
+            <div class="rd-panel rd-panel-pad">
+                <h2 class="h5 mb-3">Add a category</h2>
+
+                <form asp-action="Categories" method="post" novalidate>
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" asp-for="EventId" />
+                    <input type="hidden" asp-for="EventName" />
+
+                    <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
+
+                    <div class="mb-3">
+                        <label asp-for="Name" class="form-label"></label>
+                        <input asp-for="Name" class="form-control" placeholder="21.1km Half Marathon" />
+                        <span asp-validation-for="Name" class="text-danger small"></span>
+                    </div>
+
+                    <div class="row g-3">
+                        <div class="col-6">
+                            <label asp-for="DistanceKm" class="form-label"></label>
+                            <input asp-for="DistanceKm" class="form-control" type="number" step="0.01" />
+                            <span asp-validation-for="DistanceKm" class="text-danger small"></span>
+                        </div>
+                        <div class="col-6">
+                            <label asp-for="EntryFee" class="form-label"></label>
+                            <input asp-for="EntryFee" class="form-control" type="number" step="0.01" />
+                            <span asp-validation-for="EntryFee" class="text-danger small"></span>
+                        </div>
+                        <div class="col-6">
+                            <label asp-for="MinAge" class="form-label"></label>
+                            <input asp-for="MinAge" class="form-control" type="number" placeholder="Any" />
+                            <span asp-validation-for="MinAge" class="text-danger small"></span>
+                        </div>
+                        <div class="col-6">
+                            <label asp-for="MaxAge" class="form-label"></label>
+                            <input asp-for="MaxAge" class="form-control" type="number" placeholder="Any" />
+                            <span asp-validation-for="MaxAge" class="text-danger small"></span>
+                        </div>
+                    </div>
+
+                    <p class="rd-meta mt-2 mb-0">
+                        Age limits are checked against the entrant's age on race day.
+                    </p>
+
+                    <button type="submit" class="btn btn-rd mt-3 w-100">Add category</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

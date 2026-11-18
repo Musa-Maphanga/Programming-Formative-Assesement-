@@ -1,0 +1,167 @@
+@model EventFormViewModel
+@{
+    ViewData["Title"] = Model.IsEdit ? "Edit event" : "Create an event";
+    var action = Model.IsEdit ? "Edit" : "Create";
+}
+
+<div class="container">
+    <div class="rd-page-head">
+        <div>
+            <h1 class="mb-1">@ViewData["Title"]</h1>
+            <p class="rd-meta mb-0">
+                @(Model.IsEdit
+                    ? "Changes are visible to participants as soon as you save."
+                    : "Once it is saved, add the distances people can enter.")
+            </p>
+        </div>
+        <a class="btn btn-rd-outline" asp-action="Events">Back to my events</a>
+    </div>
+
+    <form asp-action="@action" asp-route-id="@Model.EventId" method="post" enctype="multipart/form-data" novalidate>
+        @Html.AntiForgeryToken()
+        <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
+
+        <div class="row g-4">
+            <div class="col-lg-8">
+                <div class="rd-panel rd-panel-pad mb-4">
+                    <h2 class="h5 mb-3">The event</h2>
+
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label asp-for="Name" class="form-label"></label>
+                            <input asp-for="Name" class="form-control" placeholder="Highveld Sunrise Half Marathon" />
+                            <span asp-validation-for="Name" class="text-danger small"></span>
+                        </div>
+
+                        <div class="col-sm-6">
+                            <label asp-for="EventTypeId" class="form-label"></label>
+                            <select asp-for="EventTypeId" class="form-select">
+                                <option value="">Choose a discipline</option>
+                                @foreach (var type in Model.EventTypes)
+                                {
+                                    <option value="@type.EventTypeId" selected="@(type.EventTypeId == Model.EventTypeId)">@type.TypeName</option>
+                                }
+                            </select>
+                            <span asp-validation-for="EventTypeId" class="text-danger small"></span>
+                        </div>
+
+                        <div class="col-sm-6">
+                            <label asp-for="EventDate" class="form-label"></label>
+                            <input asp-for="EventDate" class="form-control" type="datetime-local" />
+                            <span asp-validation-for="EventDate" class="text-danger small"></span>
+                            <p class="rd-meta mt-1 mb-0">The time is when the first group starts.</p>
+                        </div>
+
+                        <div class="col-12">
+                            <label asp-for="Description" class="form-label">Description</label>
+                            <textarea asp-for="Description" class="form-control" rows="4"
+                                      placeholder="What makes this race worth entering?"></textarea>
+                            <span asp-validation-for="Description" class="text-danger small"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="rd-panel rd-panel-pad mb-4">
+                    <h2 class="h5 mb-3">Where it starts</h2>
+
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label asp-for="Location" class="form-label"></label>
+                            <input asp-for="Location" class="form-control" placeholder="Union Buildings South Lawns" />
+                            <span asp-validation-for="Location" class="text-danger small"></span>
+                        </div>
+                        <div class="col-sm-6">
+                            <label asp-for="City" class="form-label"></label>
+                            <input asp-for="City" class="form-control" />
+                            <span asp-validation-for="City" class="text-danger small"></span>
+                        </div>
+                        <div class="col-sm-6">
+                            <label asp-for="Province" class="form-label">Province</label>
+                            <select asp-for="Province" asp-items="Model.ProvinceOptions" class="form-select">
+                                <option value="">Choose a province</option>
+                            </select>
+                            <span asp-validation-for="Province" class="text-danger small"></span>
+                        </div>
+                        <div class="col-sm-6">
+                            <label asp-for="Latitude" class="form-label">Latitude</label>
+                            <input asp-for="Latitude" class="form-control" placeholder="-25.740700" />
+                            <span asp-validation-for="Latitude" class="text-danger small"></span>
+                        </div>
+                        <div class="col-sm-6">
+                            <label asp-for="Longitude" class="form-label">Longitude</label>
+                            <input asp-for="Longitude" class="form-control" placeholder="28.212100" />
+                            <span asp-validation-for="Longitude" class="text-danger small"></span>
+                        </div>
+                    </div>
+                    <p class="rd-meta mt-2 mb-0">
+                        Coordinates are optional, and are what the race-day weather forecast uses.
+                    </p>
+                </div>
+            </div>
+
+            <div class="col-lg-4">
+                <div class="rd-panel rd-panel-pad mb-4">
+                    <h2 class="h5 mb-3">Entries</h2>
+
+                    <div class="mb-3">
+                        <label asp-for="DistanceKm" class="form-label"></label>
+                        <input asp-for="DistanceKm" class="form-control" type="number" step="0.01" />
+                        <span asp-validation-for="DistanceKm" class="text-danger small"></span>
+                        <p class="rd-meta mt-1 mb-0">The headline distance. Add the rest as categories.</p>
+                    </div>
+
+                    <div class="mb-0">
+                        <label asp-for="MaxParticipants" class="form-label"></label>
+                        <input asp-for="MaxParticipants" class="form-control" type="number"
+                               placeholder="Leave blank for no limit" />
+                        <span asp-validation-for="MaxParticipants" class="text-danger small"></span>
+                    </div>
+
+                    @if (Model.IsEdit)
+                    {
+                        <hr class="my-3" />
+                        <label asp-for="Status" class="form-label">Status</label>
+                        <select asp-for="Status" class="form-select">
+                            @foreach (var status in EventStatuses.All)
+                            {
+                                <option value="@status" selected="@(status == Model.Status)">@status</option>
+                            }
+                        </select>
+                        <p class="rd-meta mt-1 mb-0">
+                            Cancelled keeps the race in entrants' history. Completed opens results capture.
+                        </p>
+                    }
+                </div>
+
+                <div class="rd-panel rd-panel-pad">
+                    <h2 class="h5 mb-3">Banner image</h2>
+
+                    @if (!string.IsNullOrEmpty(Model.ExistingBannerUrl))
+                    {
+                        <img src="@Model.ExistingBannerUrl" alt="Current banner"
+                             class="img-fluid rounded mb-3" style="aspect-ratio:16/9;object-fit:cover;" />
+                    }
+
+                    <label asp-for="Banner" class="form-label"></label>
+                    <input asp-for="Banner" class="form-control" type="file" accept="image/*" />
+                    <span asp-validation-for="Banner" class="text-danger small"></span>
+                    <p class="rd-meta mt-2 mb-0">
+                        Landscape works best. The image is stored by the RaceDay service in Azure and shown
+                        on the race page. JPEG, PNG or WebP up to 5MB.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <div class="d-flex gap-2 mt-4">
+            <button type="submit" class="btn btn-rd">
+                @(Model.IsEdit ? "Save changes" : "Create event")
+            </button>
+            <a class="btn btn-rd-outline" asp-action="Events">Cancel</a>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}
