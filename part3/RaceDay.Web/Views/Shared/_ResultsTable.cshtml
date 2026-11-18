@@ -1,0 +1,33 @@
+@model List<ResultDto>
+@*
+    One results table, used by the public results page and by the summary on an
+    event's detail page. Times and positions are right-aligned tabular numerals
+    so the columns read down the page like a results board.
+*@
+<div class="rd-table-wrap">
+    <table class="rd-table">
+        <thead>
+        <tr>
+            <th class="rd-num">Pos</th>
+            <th>No.</th>
+            <th>Name</th>
+            <th>Category</th>
+            <th class="rd-num">Time</th>
+            <th class="rd-num">Pace</th>
+        </tr>
+        </thead>
+        <tbody>
+        @foreach (var result in Model.OrderBy(r => r.Position))
+        {
+            <tr>
+                <td class="rd-num">@result.Position</td>
+                <td>@(string.IsNullOrEmpty(result.RaceNumber) ? "-" : result.RaceNumber)</td>
+                <td>@result.ParticipantName</td>
+                <td>@result.CategoryName</td>
+                <td class="rd-num"><span class="rd-figure">@result.FinishTimeDisplay</span></td>
+                <td class="rd-num rd-meta">@result.PaceDisplay</td>
+            </tr>
+        }
+        </tbody>
+    </table>
+</div>

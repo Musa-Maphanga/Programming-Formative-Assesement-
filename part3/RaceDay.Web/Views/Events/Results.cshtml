@@ -1,0 +1,44 @@
+@model EventDetailViewModel
+@{
+    ViewData["Title"] = $"{Model.Event.Name} results";
+}
+
+<div class="container">
+    <div class="rd-page-head">
+        <div>
+            <h1 class="mb-1">Results</h1>
+            <p class="rd-meta mb-0">
+                @Model.Event.Name &middot; @Model.Event.EventDate.ToString("d MMMM yyyy")
+                &middot; @Model.Event.Location, @Model.Event.City
+            </p>
+        </div>
+        <a class="btn btn-rd-outline" asp-action="Details" asp-route-id="@Model.Event.EventId">Race details</a>
+    </div>
+
+    @if (!Model.Results.Any())
+    {
+        <div class="rd-empty">
+            <h3>No results published yet</h3>
+            <p>The organiser usually captures results within a day or two of the race.</p>
+        </div>
+    }
+    else
+    {
+        <dl class="rd-stats mb-4">
+            <div class="rd-stat">
+                <dt>Finishers</dt>
+                <dd>@Model.Results.Count</dd>
+            </div>
+            <div class="rd-stat">
+                <dt>Winning time</dt>
+                <dd>@Model.Results.OrderBy(r => r.Position).First().FinishTimeDisplay</dd>
+            </div>
+            <div class="rd-stat">
+                <dt>Categories</dt>
+                <dd>@Model.Results.Select(r => r.CategoryName).Distinct().Count()</dd>
+            </div>
+        </dl>
+
+        <partial name="_ResultsTable" model="Model.Results" />
+    }
+</div>
