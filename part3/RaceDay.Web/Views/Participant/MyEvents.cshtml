@@ -1,0 +1,123 @@
+@model MyEventsViewModel
+@{
+    ViewData["Title"] = "My events";
+}
+
+<div class="container">
+    <div class="rd-page-head">
+        <div>
+            <h1 class="mb-1">My events</h1>
+            <p class="rd-meta mb-0">Everything you have entered, and what is still to come.</p>
+        </div>
+        <a class="btn btn-rd" asp-controller="Events" asp-action="Index">Find another race</a>
+    </div>
+
+    @if (!Model.Enrolments.Any())
+    {
+        <div class="rd-empty">
+            <h3>You have not entered a race yet</h3>
+            <p>Browse what is open, pick a distance that suits you, and your entry will appear here.</p>
+            <a class="btn btn-rd mt-3" asp-controller="Events" asp-action="Index">Find a race</a>
+        </div>
+    }
+    else
+    {
+        <h2 class="h4 mb-3">Coming up</h2>
+
+        @if (!Model.Upcoming.Any())
+        {
+            <div class="rd-panel rd-panel-pad mb-4">
+                <p class="rd-meta mb-0">Nothing on the calendar. Your past races are below.</p>
+            </div>
+        }
+        else
+        {
+            <div class="row g-3 mb-4">
+                @foreach (var enrolment in Model.Upcoming)
+                {
+                    <div class="col-md-6">
+                        <div class="rd-panel rd-panel-pad h-100 d-flex flex-column">
+                            <div class="d-flex justify-content-between align-items-start gap-3 mb-2">
+                                <div>
+                                    <h3 class="mb-1">
+                                        <a asp-controller="Events" asp-action="Details"
+                                           asp-route-id="@enrolment.EventId"
+                                           class="text-decoration-none">@enrolment.EventName</a>
+                                    </h3>
+                                    <p class="rd-meta mb-0">
+                                        @enrolment.EventDate.ToString("dddd d MMMM yyyy")
+                                        at @enrolment.EventDate.ToString("HH:mm")
+                                    </p>
+                                </div>
+                                <partial name="_StatusBadge" model="enrolment.Status" />
+                            </div>
+
+                            <p class="rd-meta mb-3">@enrolment.Location, @enrolment.City</p>
+
+                            <div class="rd-chips mb-3">
+                                <span class="rd-chip">@enrolment.CategoryName</span>
+                                <span class="rd-chip rd-chip--muted">@enrolment.DistanceKm.ToString("0.##")km</span>
+                                @if (!string.IsNullOrEmpty(enrolment.RaceNumber))
+                                {
+                                    <span class="rd-chip rd-chip--muted">No. @enrolment.RaceNumber</span>
+                                }
+                            </div>
+
+                            <div class="mt-auto">
+                                <form asp-action="Withdraw" method="post"
+                                      onsubmit="return confirm('Withdraw from @enrolment.EventName? Your place is released.');">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="enrolmentId" value="@enrolment.EnrolmentId" />
+                                    <button type="submit" class="btn btn-rd-outline btn-sm">Withdraw</button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+
+        @if (Model.Past.Any())
+        {
+            <h2 class="h4 mb-3">Past entries</h2>
+            <div class="rd-table-wrap">
+                <table class="rd-table">
+                    <thead>
+                    <tr>
+                        <th>Event</th>
+                        <th>Date</th>
+                        <th>Category</th>
+                        <th>Status</th>
+                        <th class="rd-num">Time</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    @foreach (var enrolment in Model.Past)
+                    {
+                        <tr>
+                            <td>
+                                <a asp-controller="Events" asp-action="Details" asp-route-id="@enrolment.EventId">
+                                    @enrolment.EventName
+                                </a>
+                            </td>
+                            <td>@enrolment.EventDate.ToString("d MMM yyyy")</td>
+                            <td>@enrolment.CategoryName</td>
+                            <td><partial name="_StatusBadge" model="enrolment.Status" /></td>
+                            <td class="rd-num">
+                                @if (enrolment.Result is not null)
+                                {
+                                    <span class="rd-figure">@enrolment.Result.FinishTimeDisplay</span>
+                                }
+                                else
+                                {
+                                    <span class="rd-meta">-</span>
+                                }
+                            </td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        }
+    }
+</div>

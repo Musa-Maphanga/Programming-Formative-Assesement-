@@ -1,0 +1,125 @@
+@model ResultEntryViewModel
+@{
+    ViewData["Title"] = "Capture results";
+}
+
+<div class="container">
+    <div class="rd-page-head">
+        <div>
+            <h1 class="mb-1">Capture results</h1>
+            <p class="rd-meta mb-0">
+                @Model.Event.Name &middot; @Model.Event.EventDate.ToString("ddd d MMM yyyy")
+            </p>
+        </div>
+        <a class="btn btn-rd-outline" asp-action="Enrolments" asp-route-id="@Model.Event.EventId">Entry list</a>
+    </div>
+
+    <dl class="rd-stats mb-4">
+        <div class="rd-stat">
+            <dt>Captured</dt>
+            <dd>@Model.Captured.Count</dd>
+        </div>
+        <div class="rd-stat">
+            <dt>Outstanding</dt>
+            <dd>@Model.Outstanding.Count</dd>
+        </div>
+        <div class="rd-stat">
+            <dt>Field size</dt>
+            <dd>@Model.Enrolments.Count(e => e.IsConfirmed)</dd>
+        </div>
+    </dl>
+
+    <div class="row g-4">
+        <div class="col-lg-5">
+            <div class="rd-panel rd-panel-pad">
+                <h2 class="h5 mb-1">Record a result</h2>
+                <p class="rd-meta mb-3">Published to the participant as soon as it is saved.</p>
+
+                @if (!Model.Outstanding.Any())
+                {
+                    <p class="mb-0">Every entrant has a result. Nothing left to capture.</p>
+                }
+                else
+                {
+                    <form asp-action="Results" asp-route-id="@Model.Event.EventId" method="post" novalidate>
+                        @Html.AntiForgeryToken()
+                        <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
+
+                        <div class="mb-3">
+                            <label asp-for="EnrolmentId" class="form-label"></label>
+                            <select asp-for="EnrolmentId" class="form-select">
+                                <option value="0">Choose a participant</option>
+                                @foreach (var enrolment in Model.Outstanding.OrderBy(e => e.RaceNumber))
+                                {
+                                    <option value="@enrolment.EnrolmentId" selected="@(enrolment.EnrolmentId == Model.EnrolmentId)">
+                                        @(string.IsNullOrEmpty(enrolment.RaceNumber) ? "" : enrolment.RaceNumber + " - ")@enrolment.ParticipantName (@enrolment.CategoryName)
+                                    </option>
+                                }
+                            </select>
+                            <span asp-validation-for="EnrolmentId" class="text-danger small"></span>
+                        </div>
+
+                        <div class="mb-3">
+                            <label asp-for="FinishTime" class="form-label"></label>
+                            <input asp-for="FinishTime" class="form-control" placeholder="01:47:00" />
+                            <span asp-validation-for="FinishTime" class="text-danger small"></span>
+                        </div>
+
+                        <div class="mb-0">
+                            <label asp-for="Position" class="form-label"></label>
+                            <input asp-for="Position" class="form-control" type="number" min="1" />
+                            <span asp-validation-for="Position" class="text-danger small"></span>
+                            <p class="rd-meta mt-1 mb-0">
+                                Positions are unique within the race, so each one can be given out only once.
+                            </p>
+                        </div>
+
+                        <button type="submit" class="btn btn-rd mt-3 w-100">Publish result</button>
+                    </form>
+                }
+            </div>
+        </div>
+
+        <div class="col-lg-7">
+            <h2 class="h5 mb-3">Published so far</h2>
+
+            @if (!Model.Captured.Any())
+            {
+                <div class="rd-empty">
+                    <h3>No results published yet</h3>
+                    <p>Results you record appear here, and immediately on each participant's own page.</p>
+                </div>
+            }
+            else
+            {
+                <div class="rd-panel">
+                    @foreach (var enrolment in Model.Captured)
+                    {
+                        <div class="rd-result-row">
+                            <div class="rd-racenumber">@(enrolment.RaceNumber ?? "-")</div>
+                            <div>
+                                <strong>@enrolment.ParticipantName</strong>
+                                <div class="rd-meta">@enrolment.CategoryName</div>
+                            </div>
+                            <div class="text-end rd-result-time">
+                                <span class="rd-figure rd-figure-lg">@enrolment.Result!.FinishTimeDisplay</span>
+                                <div class="rd-meta">@enrolment.Result.PositionDisplay</div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+
+            @if (Model.Outstanding.Any())
+            {
+                <p class="rd-meta mt-3">
+                    @Model.Outstanding.Count entrant@(Model.Outstanding.Count == 1 ? "" : "s") still without a result.
+                </p>
+            }
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

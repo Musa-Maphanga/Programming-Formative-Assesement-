@@ -1,0 +1,68 @@
+@model MyResultsViewModel
+@{
+    ViewData["Title"] = "My results";
+}
+
+<div class="container">
+    <div class="rd-page-head">
+        <div>
+            <h1 class="mb-1">My results</h1>
+            <p class="rd-meta mb-0">Every race you have finished, newest first.</p>
+        </div>
+    </div>
+
+    @if (!Model.Results.Any())
+    {
+        <div class="rd-empty">
+            <h3>No results yet</h3>
+            <p>
+                Results appear here once the organiser has captured them, usually within a day or
+                two of the race.
+            </p>
+            <a class="btn btn-rd mt-3" asp-controller="Events" asp-action="Index">Find a race</a>
+        </div>
+    }
+    else
+    {
+        <dl class="rd-stats mb-4">
+            <div class="rd-stat">
+                <dt>Races completed</dt>
+                <dd>@Model.RacesCompleted</dd>
+            </div>
+            <div class="rd-stat">
+                <dt>Distance covered</dt>
+                <dd>@Model.TotalDistance.ToString("0.#") km</dd>
+            </div>
+            <div class="rd-stat">
+                <dt>Best pace</dt>
+                <dd>@(Model.Fastest?.PaceDisplay ?? "-")</dd>
+            </div>
+        </dl>
+
+        <div class="rd-panel">
+            @foreach (var result in Model.Results.OrderByDescending(r => r.EventDate))
+            {
+                <div class="rd-result-row">
+                    <div class="rd-racenumber">@(string.IsNullOrEmpty(result.RaceNumber) ? "-" : result.RaceNumber)</div>
+
+                    <div>
+                        <strong>
+                            <a asp-controller="Events" asp-action="Results" asp-route-id="@result.EventId"
+                               class="text-decoration-none">@result.EventName</a>
+                        </strong>
+                        <div class="rd-meta">
+                            @result.EventDate.ToString("d MMMM yyyy") &middot;
+                            @result.CategoryName &middot; @result.DistanceKm.ToString("0.##") km
+                        </div>
+                        <div class="rd-meta">@result.PositionDisplay</div>
+                    </div>
+
+                    <div class="text-end rd-result-time">
+                        <span class="rd-figure rd-figure-xl">@result.FinishTimeDisplay</span>
+                        <div class="rd-meta">@result.PaceDisplay</div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>

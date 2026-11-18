@@ -1,0 +1,121 @@
+@model EnrolmentListViewModel
+@{
+    ViewData["Title"] = "Entries";
+}
+
+<div class="container">
+    <div class="rd-page-head">
+        <div>
+            <h1 class="mb-1">Entries</h1>
+            <p class="rd-meta mb-0">
+                @Model.Event.Name &middot; @Model.Event.EventDate.ToString("ddd d MMM yyyy")
+            </p>
+        </div>
+        <div class="d-flex gap-2">
+            <a class="btn btn-rd-outline" asp-action="Categories" asp-route-id="@Model.Event.EventId">Categories</a>
+            @if (Model.Event.HasTakenPlace && Model.Event.Status != EventStatuses.Cancelled)
+            {
+                <a class="btn btn-rd" asp-action="Results" asp-route-id="@Model.Event.EventId">Capture results</a>
+            }
+        </div>
+    </div>
+
+    <dl class="rd-stats mb-4">
+        <div class="rd-stat">
+            <dt>Entered</dt>
+            <dd>@Model.Confirmed</dd>
+        </div>
+        <div class="rd-stat">
+            <dt>Withdrawn</dt>
+            <dd>@Model.Withdrawn</dd>
+        </div>
+        <div class="rd-stat">
+            <dt>Places left</dt>
+            <dd>@(Model.Event.PlacesRemaining?.ToString() ?? "No limit")</dd>
+        </div>
+        <div class="rd-stat">
+            <dt>Categories</dt>
+            <dd>@Model.ByCategory.Count()</dd>
+        </div>
+    </dl>
+
+    @if (!Model.Enrolments.Any())
+    {
+        <div class="rd-empty">
+            <h3>Nobody has entered yet</h3>
+            <p>
+                @if (!Model.Event.Categories.Any())
+                {
+                    <text>This event has no categories yet, so there is nothing to enter.</text>
+                }
+                else
+                {
+                    <text>Entries will appear here as they come in.</text>
+                }
+            </p>
+            @if (!Model.Event.Categories.Any())
+            {
+                <a class="btn btn-rd mt-3" asp-action="Categories" asp-route-id="@Model.Event.EventId">Add categories</a>
+            }
+        </div>
+    }
+    else
+    {
+        @foreach (var group in Model.ByCategory.OrderByDescending(g => g.First().DistanceKm))
+        {
+            <h2 class="h5 mt-4 mb-2">@group.Key <span class="rd-meta">@group.Count() entered</span></h2>
+
+            <div class="rd-table-wrap">
+                <table class="rd-table">
+                    <thead>
+                    <tr>
+                        <th>No.</th>
+                        <th>Participant</th>
+                        <th>Entered on</th>
+                        <th class="rd-num">Fee</th>
+                        <th>Status</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    @foreach (var enrolment in group.OrderBy(e => e.RaceNumber))
+                    {
+                        <tr>
+                            <td>@(string.IsNullOrEmpty(enrolment.RaceNumber) ? "-" : enrolment.RaceNumber)</td>
+                            <td>@enrolment.ParticipantName</td>
+                            <td>@enrolment.EnrolledAt.ToString("d MMM yyyy")</td>
+                            <td class="rd-num">R@(enrolment.EntryFee.ToString("0.00"))</td>
+                            <td><partial name="_StatusBadge" model="enrolment.Status" /></td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        }
+
+        @if (Model.Withdrawn > 0)
+        {
+            <h2 class="h5 mt-4 mb-2">Withdrawn <span class="rd-meta">@Model.Withdrawn</span></h2>
+            <div class="rd-table-wrap">
+                <table class="rd-table">
+                    <thead>
+                    <tr>
+                        <th>Participant</th>
+                        <th>Category</th>
+                        <th>Status</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    @foreach (var enrolment in Model.Enrolments.Where(e => !e.IsConfirmed))
+                    {
+                        <tr>
+                            <td>@enrolment.ParticipantName</td>
+                            <td>@enrolment.CategoryName</td>
+                            <td><partial name="_StatusBadge" model="enrolment.Status" /></td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        }
+    }
+</div>
