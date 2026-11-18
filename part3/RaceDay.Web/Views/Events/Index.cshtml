@@ -1,0 +1,128 @@
+@model EventBrowseViewModel
+@{
+    ViewData["Title"] = "Find a race";
+}
+
+<div class="container">
+    @if (Model.NextUp is not null)
+    {
+        @* The soonest race leads the page. It is the one piece of information a
+           runner opening the site actually wants first. *@
+        <section class="rd-hero mt-4">
+            <div class="row g-0">
+                <div class="col-lg-5">
+                    @if (!string.IsNullOrEmpty(Model.NextUp.BannerImageUrl))
+                    {
+                        <img src="@Model.NextUp.BannerImageUrl" alt="@Model.NextUp.Name" class="rd-hero-image" />
+                    }
+                    else
+                    {
+                        <div class="rd-hero-image rd-event-media--empty"><span>@Model.NextUp.EventType</span></div>
+                    }
+                </div>
+                <div class="col-lg-7 p-4 p-lg-5">
+                    <p class="rd-meta mb-2">
+                        Next up, @Model.NextUp.EventDate.ToString("dddd d MMMM") at @Model.NextUp.EventDate.ToString("HH:mm")
+                    </p>
+                    <h1 class="mb-2">@Model.NextUp.Name</h1>
+                    <p class="rd-meta mb-3">@Model.NextUp.Location, @Model.NextUp.City, @Model.NextUp.Province</p>
+
+                    <div class="rd-chips mb-4">
+                        @if (Model.NextUp.Categories.Any())
+                        {
+                            @foreach (var category in Model.NextUp.Categories.OrderByDescending(c => c.DistanceKm))
+                            {
+                                <span class="rd-chip">@category.DistanceKm.ToString("0.##")km &middot; R@(category.EntryFee.ToString("0"))</span>
+                            }
+                        }
+                        else
+                        {
+                            <span class="rd-chip">@Model.NextUp.DistanceKm.ToString("0.##")km</span>
+                        }
+                    </div>
+
+                    <a class="btn btn-rd" asp-action="Details" asp-route-id="@Model.NextUp.EventId">
+                        See the race details
+                    </a>
+                </div>
+            </div>
+        </section>
+    }
+
+    <div class="rd-page-head">
+        <div>
+            <h2 class="mb-1">@(Model.HasFilters ? "Search results" : "Upcoming races")</h2>
+            <p class="rd-meta mb-0">
+                @Model.Events.Count race@(Model.Events.Count == 1 ? "" : "s") open for entry
+            </p>
+        </div>
+    </div>
+
+    <form method="get" class="rd-filterbar mb-4">
+        <div class="row g-3 align-items-end">
+            <div class="col-md-4">
+                <label asp-for="Query" class="form-label"></label>
+                <input asp-for="Query" class="form-control" placeholder="Race name or venue" />
+            </div>
+            <div class="col-md-3">
+                <label asp-for="City" class="form-label"></label>
+                <input asp-for="City" class="form-control" placeholder="Pretoria" />
+            </div>
+            <div class="col-md-2">
+                <label asp-for="Province" class="form-label">Province</label>
+                <select asp-for="Province" class="form-select">
+                    <option value="">Anywhere</option>
+                    @foreach (var province in Provinces.All)
+                    {
+                        <option value="@province" selected="@(province == Model.Province)">@province</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label asp-for="Type" class="form-label"></label>
+                <select asp-for="Type" class="form-select">
+                    <option value="">Any discipline</option>
+                    @foreach (var type in Model.EventTypes)
+                    {
+                        <option value="@type.TypeName" selected="@(type.TypeName == Model.Type)">@type.TypeName</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label asp-for="From" class="form-label"></label>
+                <input asp-for="From" class="form-control" type="date" />
+            </div>
+            <div class="col-md-3">
+                <label asp-for="To" class="form-label"></label>
+                <input asp-for="To" class="form-control" type="date" />
+            </div>
+            <div class="col-md-6 d-flex gap-2">
+                <button type="submit" class="btn btn-rd">Search races</button>
+                @if (Model.HasFilters)
+                {
+                    <a class="btn btn-rd-outline" asp-action="Index">Clear filters</a>
+                }
+            </div>
+        </div>
+    </form>
+
+    @if (!Model.Events.Any())
+    {
+        <div class="rd-empty">
+            <h3>No races match that search</h3>
+            <p>Try widening the date range, or clear the filters to see everything that is open.</p>
+            <a class="btn btn-rd-outline mt-3" asp-action="Index">Show all races</a>
+        </div>
+    }
+    else
+    {
+        <div class="row g-4">
+            @foreach (var raceEvent in Model.Events.OrderBy(e => e.EventDate))
+            {
+                <div class="col-sm-6 col-lg-4">
+                    <partial name="_EventCard" model="raceEvent" />
+                </div>
+            }
+        </div>
+    }
+</div>

@@ -1,0 +1,69 @@
+@model EventDto
+@*
+    The date is pinned to the artwork the way a number is pinned to a vest.
+    When an organiser has not uploaded a banner, the space keeps its shape and
+    says so rather than collapsing or showing a broken image.
+*@
+<div class="rd-event-card">
+    <div class="rd-event-media @(string.IsNullOrEmpty(Model.BannerImageUrl) ? "rd-event-media--empty" : "")">
+        @if (!string.IsNullOrEmpty(Model.BannerImageUrl))
+        {
+            <img src="@Model.BannerImageUrl" alt="@Model.Name" loading="lazy" />
+        }
+        else
+        {
+            <span>@(string.IsNullOrEmpty(Model.EventType) ? "RaceDay" : Model.EventType)</span>
+        }
+
+        <div class="rd-bib">
+            <span class="rd-bib-day">@Model.EventDate.ToString("dd")</span>
+            <span class="rd-bib-month">@Model.EventDate.ToString("MMM")</span>
+        </div>
+    </div>
+
+    <div class="rd-event-body">
+        <h3><a asp-controller="Events" asp-action="Details" asp-route-id="@Model.EventId"
+               class="stretched-link text-decoration-none">@Model.Name</a></h3>
+
+        <p class="rd-meta mb-0">@Model.Location, @Model.City</p>
+
+        <div class="rd-chips">
+            @if (Model.Categories.Any())
+            {
+                @foreach (var category in Model.Categories.OrderByDescending(c => c.DistanceKm).Take(4))
+                {
+                    <span class="rd-chip">@category.DistanceKm.ToString("0.##")km</span>
+                }
+            }
+            else
+            {
+                <span class="rd-chip">@Model.DistanceKm.ToString("0.##")km</span>
+            }
+        </div>
+
+        <div class="d-flex justify-content-between align-items-center mt-auto pt-2">
+            <span class="rd-meta">
+                @if (Model.Status == EventStatuses.Cancelled)
+                {
+                    <text>Cancelled</text>
+                }
+                else if (Model.HasTakenPlace)
+                {
+                    <text>Results available</text>
+                }
+                else if (Model.IsFull)
+                {
+                    <text>Entries full</text>
+                }
+                else
+                {
+                    <text>Starts @Model.EventDate.ToString("HH:mm")</text>
+                }
+            </span>
+            @if (Model.EnrolledCount > 0)
+            {
+                <span class="rd-chip rd-chip--muted">@Model.EnrolledCount entered</span>
+            }
+        </div>
+    </div>
+</div>

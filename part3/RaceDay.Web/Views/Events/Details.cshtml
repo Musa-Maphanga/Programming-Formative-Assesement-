@@ -1,0 +1,175 @@
+@model EventDetailViewModel
+@{
+    ViewData["Title"] = Model.Event.Name;
+    var race = Model.Event;
+    var entry = Model.MyEntry;
+}
+
+<div class="container">
+    <section class="rd-hero mt-4">
+        <div class="row g-0">
+            <div class="col-lg-5">
+                @if (!string.IsNullOrEmpty(race.BannerImageUrl))
+                {
+                    <img src="@race.BannerImageUrl" alt="@race.Name" class="rd-hero-image" />
+                }
+                else
+                {
+                    <div class="rd-hero-image rd-event-media--empty"><span>@race.EventType</span></div>
+                }
+            </div>
+            <div class="col-lg-7 p-4 p-lg-5">
+                <div class="d-flex flex-wrap gap-2 align-items-center mb-2">
+                    <partial name="_StatusBadge" model="race.Status" />
+                    <span class="rd-meta">@race.EventType</span>
+                </div>
+                <h1 class="mb-2">@race.Name</h1>
+                <p class="rd-meta mb-3">
+                    @race.EventDate.ToString("dddd d MMMM yyyy") at @race.EventDate.ToString("HH:mm")
+                    &middot; @race.Location, @race.City, @race.Province
+                </p>
+
+                @if (!string.IsNullOrWhiteSpace(race.Description))
+                {
+                    <p class="mb-3">@race.Description</p>
+                }
+
+                <p class="rd-meta mb-0">
+                    @if (race.Status == EventStatuses.Cancelled)
+                    {
+                        <text>This race has been cancelled.</text>
+                    }
+                    else if (race.HasTakenPlace)
+                    {
+                        <text>This race has taken place.</text>
+                        <a asp-action="Results" asp-route-id="@race.EventId">See the results</a><text>.</text>
+                    }
+                    else if (race.IsFull)
+                    {
+                        <text>Entries are full: @race.EnrolledCount of @race.MaxParticipants places taken.</text>
+                    }
+                    else
+                    {
+                        <text>@race.EnrolledCount entered so far</text>
+                        @if (race.PlacesRemaining.HasValue)
+                        {
+                            <text>, @race.PlacesRemaining places left</text>
+                        }
+                        <text>.</text>
+                    }
+                </p>
+            </div>
+        </div>
+    </section>
+
+    @if (entry is not null)
+    {
+        <div class="rd-panel rd-panel-pad mt-4 d-flex flex-wrap justify-content-between align-items-center gap-3">
+            <div>
+                <h2 class="h5 mb-1">You are entered in @entry.CategoryName</h2>
+                <p class="rd-meta mb-0">
+                    @if (!string.IsNullOrEmpty(entry.RaceNumber))
+                    {
+                        <text>Race number @entry.RaceNumber. </text>
+                    }
+                    One entry is allowed per race, so to change distance, withdraw first.
+                </p>
+            </div>
+            <a class="btn btn-rd-outline" asp-controller="Participant" asp-action="MyEvents">Manage my entry</a>
+        </div>
+    }
+
+    <div class="rd-page-head">
+        <h2 class="mb-0">Distances</h2>
+        @if (Model.IsSignedIn && !Model.IsParticipant)
+        {
+            <span class="rd-meta">Entries are made from a participant account.</span>
+        }
+    </div>
+
+    @if (!race.Categories.Any())
+    {
+        <div class="rd-empty">
+            <h3>No distances have been published yet</h3>
+            <p>The organiser is still setting this race up. Check back shortly.</p>
+        </div>
+    }
+    else
+    {
+        <div class="row g-3">
+            @foreach (var category in race.Categories.OrderByDescending(c => c.DistanceKm))
+            {
+                <div class="col-md-6">
+                    <div class="rd-panel rd-panel-pad h-100 d-flex flex-column gap-2">
+                        <div class="d-flex justify-content-between align-items-start gap-3">
+                            <div>
+                                <h3 class="mb-1">@category.Name</h3>
+                                <p class="rd-meta mb-0">
+                                    @category.EnrolledCount entered
+                                    @if (!string.IsNullOrEmpty(category.AgeLimitDisplay))
+                                    {
+                                        <text>&middot; @category.AgeLimitDisplay</text>
+                                    }
+                                </p>
+                            </div>
+                            <div class="text-end flex-shrink-0">
+                                <span class="rd-figure rd-figure-lg">R@(category.EntryFee.ToString("0"))</span>
+                                <div class="rd-meta">@category.DistanceKm.ToString("0.##") km</div>
+                            </div>
+                        </div>
+
+                        <div class="mt-auto pt-2">
+                            @if (entry is not null && entry.CategoryId == category.CategoryId)
+                            {
+                                <span class="rd-status rd-status--confirmed">You are entered</span>
+                            }
+                            else if (entry is not null)
+                            {
+                                <span class="rd-meta">You are entered in another distance at this race.</span>
+                            }
+                            else if (race.Status == EventStatuses.Cancelled)
+                            {
+                                <span class="rd-meta">This race has been cancelled.</span>
+                            }
+                            else if (race.HasTakenPlace)
+                            {
+                                <span class="rd-meta">Entries have closed.</span>
+                            }
+                            else if (race.IsFull)
+                            {
+                                <span class="rd-meta">This race is full.</span>
+                            }
+                            else if (!Model.IsSignedIn)
+                            {
+                                <a class="btn btn-rd"
+                                   asp-controller="Account" asp-action="Login"
+                                   asp-route-returnUrl="@Url.Action("Details", "Events", new { id = race.EventId })">
+                                    Sign in to enter
+                                </a>
+                            }
+                            else if (Model.IsParticipant)
+                            {
+                                <form asp-action="Enter" method="post">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="eventId" value="@race.EventId" />
+                                    <input type="hidden" name="categoryId" value="@category.CategoryId" />
+                                    <button type="submit" class="btn btn-rd">Enter this race</button>
+                                </form>
+                            }
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+
+    @if (Model.Results.Any())
+    {
+        <div class="rd-page-head">
+            <h2 class="mb-0">Results</h2>
+            <a class="btn btn-rd-outline btn-sm" asp-action="Results" asp-route-id="@race.EventId">See all results</a>
+        </div>
+
+        <partial name="_ResultsTable" model="Model.Results.Take(10).ToList()" />
+    }
+</div>
