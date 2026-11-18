@@ -142,6 +142,7 @@ public class EventsController : RaceDayControllerBase
     /// <summary>Updates an event's details or changes its status (for example to Cancelled).</summary>
     /// <remarks>Only the organiser who created the event can change it.</remarks>
     /// <param name="id">The EventId.</param>
+    /// <param name="request">The new details, including the status.</param>
     /// <response code="200">The updated event.</response>
     /// <response code="400">Invalid fields.</response>
     /// <response code="403">Not the owner.</response>
