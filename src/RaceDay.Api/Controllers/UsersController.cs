@@ -107,6 +107,61 @@ public class UsersController : RaceDayControllerBase
         DateOfBirth = u.DateOfBirth,
         Gender = u.Gender,
         City = u.City,
+        ProfilePictureUrl = u.ProfilePictureUrl,
         CreatedAt = u.CreatedAt
     };
+
+    /// <summary>Uploads or replaces the logged-in user's profile picture.</summary>
+    /// <remarks>
+    /// Send the image as multipart/form-data under the field name "file". The API stores it in
+    /// Azure Blob Storage and saves the URL against the user, so no client ever holds an Azure
+    /// credential. Uploading again replaces the previous picture.
+    /// </remarks>
+    /// <param name="file">A JPEG, PNG or WebP image.</param>
+    /// <param name="storage">Injected image storage.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <response code="200">The stored image URL.</response>
+    /// <response code="400">No file, or the file is not an acceptable image.</response>
+    /// <response code="404">The user no longer exists.</response>
+    /// <response code="503">Image storage is not configured or not reachable.</response>
+    [HttpPost("profile-picture")]
+    [ProducesResponseType(typeof(UploadResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable)]
+    public async Task<ActionResult<UploadResponse>> UploadProfilePicture(
+        IFormFile? file, [FromServices] IImageStorage storage, CancellationToken ct)
+    {
+        if (file is null)
+            return ApiError(StatusCodes.Status400BadRequest, "Attach an image under the field name \"file\".");
+
+        var user = await Db.Users.FirstOrDefaultAsync(u => u.UserId == CurrentUserId, ct);
+        if (user is null)
+            return ApiError(StatusCodes.Status404NotFound, "This user no longer exists.");
+
+        try
+        {
+            var previous = user.ProfilePictureUrl;
+
+            var url = await storage.UploadAsync(
+                AzureStorageContainers.ProfilePictures, file, $"user-{user.UserId}", ct);
+
+            user.ProfilePictureUrl = url;
+            await Db.SaveChangesAsync(ct);
+
+            // Only tidy up the old file once the new one is safely saved.
+            if (!string.IsNullOrEmpty(previous) && previous != url)
+                await storage.DeleteAsync(previous, ct);
+
+            return Ok(new UploadResponse { Url = url });
+        }
+        catch (ImageRejectedException ex)
+        {
+            return ApiError(StatusCodes.Status400BadRequest, ex.Message);
+        }
+        catch (ImageStorageUnavailableException ex)
+        {
+            return ApiError(StatusCodes.Status503ServiceUnavailable, ex.Message);
+        }
+    }
 }

@@ -31,3 +31,10 @@ public static class Genders
 {
     public static readonly string[] All = { "Male", "Female", "Other" };
 }
+
+/// <summary>Blob Storage container names used for uploaded images.</summary>
+public static class AzureStorageContainers
+{
+    public const string EventBanners = "event-banners";
+    public const string ProfilePictures = "profile-pictures";
+}

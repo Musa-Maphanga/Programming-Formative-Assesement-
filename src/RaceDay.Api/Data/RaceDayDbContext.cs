@@ -51,6 +51,7 @@ public class RaceDayDbContext : DbContext
             b.Property(u => u.DateOfBirth).HasColumnType("date");
             b.Property(u => u.Gender).HasMaxLength(10);
             b.Property(u => u.City).HasMaxLength(100);
+            b.Property(u => u.ProfilePictureUrl).HasMaxLength(500);
             b.Property(u => u.CreatedAt).HasColumnType("datetime2(0)").HasDefaultValueSql(utcNow);
             b.HasIndex(u => u.Email).IsUnique().HasDatabaseName("UQ_Users_Email");
 
@@ -89,6 +90,7 @@ public class RaceDayDbContext : DbContext
             b.Property(e => e.Longitude).HasPrecision(9, 6);
             b.Property(e => e.DistanceKm).HasPrecision(6, 2);
             b.Property(e => e.Status).HasMaxLength(20).IsRequired().HasDefaultValue(EventStatuses.Upcoming);
+            b.Property(e => e.BannerImageUrl).HasMaxLength(500);
             b.Property(e => e.CreatedAt).HasColumnType("datetime2(0)").HasDefaultValueSql(utcNow);
 
             // OrganiserId points at Users. The database cannot check that this user is an

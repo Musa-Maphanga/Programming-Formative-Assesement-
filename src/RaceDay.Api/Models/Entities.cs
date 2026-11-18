@@ -24,6 +24,10 @@ public class User
     public DateOnly? DateOfBirth { get; set; }
     public string? Gender { get; set; }
     public string? City { get; set; }
+
+    /// <summary>URL of the profile picture in Azure Blob Storage. Null until one is uploaded.</summary>
+    public string? ProfilePictureUrl { get; set; }
+
     public DateTime CreatedAt { get; set; }
 
     public Role Role { get; set; } = null!;
@@ -63,6 +67,10 @@ public class Event
     public decimal DistanceKm { get; set; }
     public int? MaxParticipants { get; set; }
     public string Status { get; set; } = EventStatuses.Upcoming;
+
+    /// <summary>URL of the banner image in Azure Blob Storage. Null until one is uploaded.</summary>
+    public string? BannerImageUrl { get; set; }
+
     public DateTime CreatedAt { get; set; }
 
     public User Organiser { get; set; } = null!;

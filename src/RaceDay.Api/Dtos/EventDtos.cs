@@ -81,6 +81,10 @@ public class EventResponse
     public int? MaxParticipants { get; set; }
     public int EnrolledCount { get; set; }
     public string Status { get; set; } = string.Empty;
+
+    /// <summary>URL of the event's banner image, or null if none has been uploaded.</summary>
+    public string? BannerImageUrl { get; set; }
+
     public int OrganiserId { get; set; }
     public string OrganiserName { get; set; } = string.Empty;
     public DateTime CreatedAt { get; set; }
