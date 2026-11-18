@@ -1,0 +1,19 @@
+@*
+    One place for the confirmations and refusals that arrive after a redirect.
+    Controllers put a sentence in TempData and this renders it, so no page has
+    to invent its own way of telling the user what happened.
+*@
+@if (TempData["Success"] is string success && !string.IsNullOrWhiteSpace(success))
+{
+    <div class="alert alert-success mt-3 mb-0" role="status">@success</div>
+}
+
+@if (TempData["Error"] is string error && !string.IsNullOrWhiteSpace(error))
+{
+    <div class="alert alert-danger mt-3 mb-0" role="alert">@error</div>
+}
+
+@if (TempData["Info"] is string info && !string.IsNullOrWhiteSpace(info))
+{
+    <div class="alert alert-info mt-3 mb-0" role="status">@info</div>
+}

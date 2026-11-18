@@ -1,0 +1,514 @@
+/* ===========================================================================
+   RaceDay theme
+   ---------------------------------------------------------------------------
+   The visual language is borrowed from the things a runner actually handles on
+   race morning: the bib pinned to a vest, the clock above the finish chute and
+   the timing mat laid across the road. Dates are set as bib tags, times and
+   distances are set as scoreboard numerals, and the striped rule that separates
+   sections is the timing mat.
+
+   One deliberate constraint drives the palette. Green, amber and red are
+   reserved for enrolment status and are never used for anything else, so a
+   colour carries meaning wherever it appears. That rules those hues out for the
+   brand itself, which is why the primary colour is indigo with a cyan highlight.
+   =========================================================================== */
+
+:root {
+    /* core palette */
+    --rd-ink:        #121A2E;   /* headings, dark surfaces */
+    --rd-ink-soft:   #2A3650;   /* secondary text on light */
+    --rd-muted:      #68748C;   /* captions, meta */
+    --rd-paper:      #F6F7FB;   /* page background */
+    --rd-surface:    #FFFFFF;   /* panels */
+    --rd-line:       #DFE3EC;   /* hairlines */
+
+    /* brand */
+    --rd-brand:      #4B2BD6;   /* primary actions */
+    --rd-brand-deep: #33189F;   /* hover / active */
+    --rd-brand-wash: #EEEAFC;   /* tints */
+    --rd-lane:       #00BFD3;   /* highlight, timing stripe */
+
+    /* status - reserved meanings, used nowhere else */
+    --rd-confirmed:  #157F47;
+    --rd-confirmed-bg: #E3F4EA;
+    --rd-pending:    #A96400;
+    --rd-pending-bg: #FDF1DD;
+    --rd-cancelled:  #A3261D;
+    --rd-cancelled-bg: #FBE7E5;
+    --rd-neutral:    #4A5569;
+    --rd-neutral-bg: #EDEFF4;
+
+    --rd-radius:     10px;
+    --rd-shadow:     0 10px 30px rgba(18, 26, 46, .10);
+}
+
+/* --------------------------------------------------------------- typography */
+
+body {
+    background: var(--rd-paper);
+    color: var(--rd-ink-soft);
+    font-family: "Barlow", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font-size: 1rem;
+    line-height: 1.6;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+h1, h2, h3, h4, h5, .rd-condensed {
+    font-family: "Barlow Condensed", "Barlow", -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--rd-ink);
+    letter-spacing: .01em;
+    font-weight: 700;
+    line-height: 1.12;
+}
+
+h1 { font-size: clamp(2.1rem, 1.5rem + 2vw, 3.1rem); }
+h2 { font-size: clamp(1.6rem, 1.3rem + 1.1vw, 2.1rem); }
+h3 { font-size: 1.35rem; }
+
+p  { max-width: 72ch; }
+
+.rd-lede {
+    font-size: 1.08rem;
+    color: var(--rd-ink-soft);
+    max-width: 62ch;
+}
+
+.rd-meta {
+    color: var(--rd-muted);
+    font-size: .92rem;
+}
+
+/* Scoreboard numerals: times, distances, counts. Tabular figures so digits
+   line up down a column the way they do on a results board. */
+.rd-figure {
+    font-family: "Barlow Condensed", "Barlow", sans-serif;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum" 1;
+    color: var(--rd-ink);
+    line-height: 1;
+}
+
+.rd-figure-xl { font-size: 2.6rem; }
+.rd-figure-lg { font-size: 1.8rem; }
+
+a { color: var(--rd-brand-deep); text-decoration-thickness: 1px; text-underline-offset: 2px; }
+a:hover { color: var(--rd-brand); }
+
+/* ------------------------------------------------------------------ masthead */
+
+.rd-masthead {
+    background: var(--rd-ink);
+    color: #fff;
+}
+
+.rd-masthead .navbar-brand {
+    font-family: "Barlow Condensed", "Barlow", sans-serif;
+    font-weight: 800;
+    font-size: 1.7rem;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: #fff;
+}
+
+.rd-masthead .navbar-brand span { color: var(--rd-lane); }
+
+.rd-masthead .nav-link {
+    color: rgba(255, 255, 255, .82);
+    font-weight: 500;
+    padding-inline: .85rem;
+}
+
+.rd-masthead .nav-link:hover,
+.rd-masthead .nav-link:focus-visible { color: #fff; }
+
+.rd-masthead .nav-link.active {
+    color: #fff;
+    box-shadow: inset 0 -3px 0 var(--rd-lane);
+}
+
+.rd-role-chip {
+    font-family: "Barlow Condensed", sans-serif;
+    font-weight: 700;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    font-size: .8rem;
+    background: rgba(255, 255, 255, .12);
+    border: 1px solid rgba(255, 255, 255, .22);
+    padding: .15rem .55rem;
+    border-radius: 999px;
+    color: #fff;
+}
+
+/* The timing mat: a striped rule used to close the masthead and open a page. */
+.rd-mat {
+    height: 6px;
+    background: repeating-linear-gradient(
+        -45deg,
+        var(--rd-brand) 0 14px,
+        var(--rd-brand-deep) 14px 28px,
+        var(--rd-lane) 28px 34px
+    );
+}
+
+/* ---------------------------------------------------------------- structure */
+
+main { flex: 1 0 auto; }
+
+.rd-page-head {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    align-items: flex-end;
+    justify-content: space-between;
+    margin-block: 2rem 1.25rem;
+}
+
+.rd-panel {
+    background: var(--rd-surface);
+    border: 1px solid var(--rd-line);
+    border-radius: var(--rd-radius);
+}
+
+.rd-panel-pad { padding: 1.35rem 1.5rem; }
+
+/* Statistics read as one instrument panel divided by hairlines rather than as
+   a row of identical floating cards. */
+.rd-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    background: var(--rd-surface);
+    border: 1px solid var(--rd-line);
+    border-radius: var(--rd-radius);
+    overflow: hidden;
+}
+
+.rd-stat {
+    padding: 1.15rem 1.35rem;
+    border-right: 1px solid var(--rd-line);
+}
+
+.rd-stat:last-child { border-right: 0; }
+
+.rd-stat dt {
+    font-size: .88rem;
+    color: var(--rd-muted);
+    font-weight: 500;
+    margin-bottom: .2rem;
+}
+
+.rd-stat dd {
+    margin: 0;
+    font-family: "Barlow Condensed", sans-serif;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    font-size: 2.1rem;
+    line-height: 1;
+    color: var(--rd-ink);
+}
+
+/* ------------------------------------------------------------------- events */
+
+.rd-hero {
+    background: var(--rd-ink);
+    color: #fff;
+    border-radius: var(--rd-radius);
+    overflow: hidden;
+    box-shadow: var(--rd-shadow);
+}
+
+.rd-hero h1, .rd-hero .rd-figure { color: #fff; }
+.rd-hero .rd-meta { color: rgba(255, 255, 255, .72); }
+
+.rd-hero-image {
+    width: 100%;
+    height: 100%;
+    min-height: 240px;
+    object-fit: cover;
+    display: block;
+}
+
+.rd-event-card {
+    background: var(--rd-surface);
+    border: 1px solid var(--rd-line);
+    border-radius: var(--rd-radius);
+    overflow: hidden;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+}
+
+.rd-event-card:hover { border-color: #C3C9D8; }
+
+.rd-event-media {
+    position: relative;
+    aspect-ratio: 16 / 9;
+    background: var(--rd-brand-wash);
+}
+
+.rd-event-media img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+/* Stand-in artwork when an organiser has not uploaded a banner yet. */
+.rd-event-media--empty {
+    background:
+        repeating-linear-gradient(-45deg,
+            rgba(75, 43, 214, .07) 0 12px,
+            rgba(0, 191, 211, .07) 12px 24px),
+        var(--rd-brand-wash);
+    display: grid;
+    place-items: center;
+    color: var(--rd-brand-deep);
+    font-family: "Barlow Condensed", sans-serif;
+    font-weight: 700;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    font-size: .95rem;
+}
+
+/* The date block is pinned to the artwork like a bib pinned to a vest. */
+.rd-bib {
+    position: absolute;
+    left: 1rem;
+    bottom: -14px;
+    background: var(--rd-surface);
+    border: 1px solid var(--rd-line);
+    border-top: 4px solid var(--rd-brand);
+    border-radius: 6px;
+    padding: .4rem .75rem .35rem;
+    text-align: center;
+    min-width: 62px;
+    box-shadow: 0 4px 14px rgba(18, 26, 46, .12);
+}
+
+.rd-bib .rd-bib-day {
+    display: block;
+    font-family: "Barlow Condensed", sans-serif;
+    font-weight: 800;
+    font-size: 1.6rem;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+    color: var(--rd-ink);
+}
+
+.rd-bib .rd-bib-month {
+    display: block;
+    font-size: .72rem;
+    font-weight: 600;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--rd-muted);
+}
+
+.rd-event-body {
+    padding: 1.5rem 1.25rem 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: .55rem;
+    flex: 1;
+}
+
+.rd-event-body h3 { margin: 0; font-size: 1.22rem; }
+
+/* Distance chips carry data, so they stay plain and legible. */
+.rd-chips { display: flex; flex-wrap: wrap; gap: .35rem; }
+
+.rd-chip {
+    font-family: "Barlow Condensed", sans-serif;
+    font-weight: 600;
+    font-size: .92rem;
+    letter-spacing: .02em;
+    background: var(--rd-brand-wash);
+    color: var(--rd-brand-deep);
+    border-radius: 4px;
+    padding: .1rem .5rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.rd-chip--muted { background: var(--rd-neutral-bg); color: var(--rd-neutral); }
+
+/* ------------------------------------------------------------------ status */
+
+.rd-status {
+    display: inline-flex;
+    align-items: center;
+    gap: .4rem;
+    font-weight: 600;
+    font-size: .86rem;
+    border-radius: 999px;
+    padding: .18rem .7rem;
+    border: 1px solid transparent;
+    white-space: nowrap;
+}
+
+.rd-status::before {
+    content: "";
+    width: .5rem;
+    height: .5rem;
+    border-radius: 50%;
+    background: currentColor;
+}
+
+.rd-status--confirmed { color: var(--rd-confirmed); background: var(--rd-confirmed-bg); border-color: #BFE3CD; }
+.rd-status--pending   { color: var(--rd-pending);   background: var(--rd-pending-bg);   border-color: #EFD8AE; }
+.rd-status--cancelled { color: var(--rd-cancelled); background: var(--rd-cancelled-bg); border-color: #EFC6C2; }
+.rd-status--neutral   { color: var(--rd-neutral);   background: var(--rd-neutral-bg);   border-color: #D5D9E3; }
+
+/* --------------------------------------------------------------- results */
+
+.rd-result-row {
+    display: grid;
+    grid-template-columns: 78px 1fr auto;
+    gap: 1rem;
+    align-items: center;
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid var(--rd-line);
+}
+
+.rd-result-row:last-child { border-bottom: 0; }
+
+.rd-racenumber {
+    font-family: "Barlow Condensed", sans-serif;
+    font-weight: 800;
+    font-size: 1.15rem;
+    font-variant-numeric: tabular-nums;
+    text-align: center;
+    color: var(--rd-ink);
+    background: var(--rd-surface);
+    border: 1px solid var(--rd-line);
+    border-top: 3px solid var(--rd-ink);
+    border-radius: 5px;
+    padding: .3rem .25rem .2rem;
+}
+
+/* ---------------------------------------------------------------- tables */
+
+.rd-table {
+    width: 100%;
+    background: var(--rd-surface);
+    border-collapse: collapse;
+}
+
+.rd-table th {
+    font-family: "Barlow Condensed", sans-serif;
+    font-weight: 700;
+    font-size: .95rem;
+    letter-spacing: .03em;
+    color: var(--rd-ink);
+    background: #F0F2F7;
+    border-bottom: 1px solid var(--rd-line);
+    padding: .65rem .9rem;
+    text-align: left;
+}
+
+.rd-table td {
+    padding: .7rem .9rem;
+    border-bottom: 1px solid var(--rd-line);
+    vertical-align: middle;
+}
+
+.rd-table tbody tr:last-child td { border-bottom: 0; }
+.rd-table tbody tr:hover { background: #FAFBFE; }
+
+.rd-num { text-align: right; font-variant-numeric: tabular-nums; }
+
+.rd-table-wrap {
+    border: 1px solid var(--rd-line);
+    border-radius: var(--rd-radius);
+    overflow: hidden;
+}
+
+/* --------------------------------------------------------------- controls */
+
+.btn {
+    font-weight: 600;
+    border-radius: 7px;
+    padding: .5rem 1.05rem;
+}
+
+.btn-rd {
+    background: var(--rd-brand);
+    border-color: var(--rd-brand);
+    color: #fff;
+}
+
+.btn-rd:hover, .btn-rd:focus-visible {
+    background: var(--rd-brand-deep);
+    border-color: var(--rd-brand-deep);
+    color: #fff;
+}
+
+.btn-rd-outline {
+    background: transparent;
+    border: 1px solid var(--rd-line);
+    color: var(--rd-ink);
+}
+
+.btn-rd-outline:hover, .btn-rd-outline:focus-visible {
+    border-color: var(--rd-brand);
+    color: var(--rd-brand-deep);
+    background: var(--rd-brand-wash);
+}
+
+.form-label { font-weight: 600; color: var(--rd-ink); margin-bottom: .25rem; }
+.form-control, .form-select { border-color: var(--rd-line); padding: .5rem .7rem; }
+
+.form-control:focus, .form-select:focus {
+    border-color: var(--rd-brand);
+    box-shadow: 0 0 0 3px rgba(75, 43, 214, .16);
+}
+
+:focus-visible { outline: 3px solid var(--rd-lane); outline-offset: 2px; }
+
+.rd-filterbar {
+    background: var(--rd-surface);
+    border: 1px solid var(--rd-line);
+    border-radius: var(--rd-radius);
+    padding: 1rem 1.15rem;
+}
+
+/* --------------------------------------------------------------- feedback */
+
+.rd-empty {
+    text-align: center;
+    padding: 3rem 1.5rem;
+    border: 1px dashed var(--rd-line);
+    border-radius: var(--rd-radius);
+    background: var(--rd-surface);
+}
+
+.rd-empty h3 { margin-bottom: .4rem; }
+.rd-empty p  { margin-inline: auto; color: var(--rd-muted); }
+
+.alert { border-radius: var(--rd-radius); border-width: 1px; }
+
+/* ----------------------------------------------------------------- footer */
+
+.rd-footer {
+    background: var(--rd-ink);
+    color: rgba(255, 255, 255, .7);
+    padding: 1.5rem 0;
+    margin-top: 3.5rem;
+    font-size: .9rem;
+}
+
+.rd-footer a { color: var(--rd-lane); }
+
+/* ------------------------------------------------------------ small screens */
+
+@media (max-width: 575.98px) {
+    .rd-result-row { grid-template-columns: 62px 1fr; }
+    .rd-result-row .rd-result-time { grid-column: 1 / -1; }
+    .rd-stat { border-right: 0; border-bottom: 1px solid var(--rd-line); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    * { animation-duration: .001ms !important; transition-duration: .001ms !important; }
+}

@@ -1,0 +1,108 @@
+﻿@using RaceDay.Web.Services
+@{
+    var session = Context.Session;
+    var signedIn = session.IsSignedIn();
+    var role = session.GetRole() ?? "";
+    var displayName = session.GetDisplayName();
+
+    string NavClass(string controller) =>
+        string.Equals(ViewContext.RouteData.Values["controller"]?.ToString(), controller,
+            StringComparison.OrdinalIgnoreCase) ? "nav-link active" : "nav-link";
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] &middot; RaceDay</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/raceday.css" asp-append-version="true" />
+</head>
+<body>
+<header>
+    <nav class="navbar navbar-expand-lg rd-masthead">
+        <div class="container">
+            <a class="navbar-brand" asp-controller="Home" asp-action="Index">Race<span>Day</span></a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse"
+                    data-bs-target="#rdNav" aria-controls="rdNav" aria-expanded="false"
+                    aria-label="Show navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+
+            <div class="collapse navbar-collapse" id="rdNav">
+                @*
+                    Each role gets its own menu. A participant never sees organiser
+                    tools and an organiser is not offered an entry form, so the
+                    navigation itself expresses what the role can do.
+                *@
+                <ul class="navbar-nav me-auto">
+                    @if (!signedIn)
+                    {
+                        <li class="nav-item"><a class="@NavClass("Events")" asp-controller="Events" asp-action="Index">Find a race</a></li>
+                    }
+                    else if (role == Roles.Organiser)
+                    {
+                        <li class="nav-item"><a class="@NavClass("Organiser")" asp-controller="Organiser" asp-action="Index">Dashboard</a></li>
+                        <li class="nav-item"><a class="nav-link" asp-controller="Organiser" asp-action="Events">My events</a></li>
+                        <li class="nav-item"><a class="nav-link" asp-controller="Organiser" asp-action="Create">Create an event</a></li>
+                    }
+                    else
+                    {
+                        <li class="nav-item"><a class="@NavClass("Events")" asp-controller="Events" asp-action="Index">Find a race</a></li>
+                        <li class="nav-item"><a class="@NavClass("Participant")" asp-controller="Participant" asp-action="MyEvents">My events</a></li>
+                        <li class="nav-item"><a class="nav-link" asp-controller="Participant" asp-action="MyResults">My results</a></li>
+                    }
+                </ul>
+
+                <ul class="navbar-nav align-items-lg-center">
+                    @if (signedIn)
+                    {
+                        <li class="nav-item d-none d-lg-block me-2">
+                            <span class="rd-role-chip">@role</span>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" asp-controller="Account" asp-action="Profile">@displayName</a>
+                        </li>
+                        <li class="nav-item">
+                            <form asp-controller="Account" asp-action="Logout" method="post" class="d-inline">
+                                <button type="submit" class="nav-link btn btn-link px-3">Sign out</button>
+                            </form>
+                        </li>
+                    }
+                    else
+                    {
+                        <li class="nav-item"><a class="nav-link" asp-controller="Account" asp-action="Login">Sign in</a></li>
+                        <li class="nav-item ms-lg-2">
+                            <a class="btn btn-rd btn-sm" asp-controller="Account" asp-action="Register">Create an account</a>
+                        </li>
+                    }
+                </ul>
+            </div>
+        </div>
+    </nav>
+    <div class="rd-mat" role="presentation"></div>
+</header>
+
+<main>
+    <div class="container">
+        <partial name="_Alerts" />
+    </div>
+    @RenderBody()
+</main>
+
+<footer class="rd-footer">
+    <div class="container d-flex flex-wrap justify-content-between gap-2">
+        <span>RaceDay &mdash; events, entries and results for South African endurance sport.</span>
+        <span>&copy; @DateTime.Now.Year</span>
+    </div>
+</footer>
+
+<script src="~/lib/jquery/dist/jquery.min.js"></script>
+<script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+<script src="~/js/site.js" asp-append-version="true"></script>
+@await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

@@ -1,0 +1,22 @@
+@model string
+@*
+    Status colour is meaningful, not decorative: green reads as confirmed or
+    open, amber as waiting on something, red as cancelled or withdrawn. Because
+    those colours are used for nothing else in the application, a glance down a
+    long entry list is enough to see where the problems are. The dot alongside
+    the wording means the badge still works for anyone who cannot distinguish
+    the hues.
+*@
+@{
+    var status = Model ?? "";
+    var cssClass = status switch
+    {
+        "Confirmed" => "rd-status rd-status--confirmed",
+        "Upcoming" => "rd-status rd-status--confirmed",
+        "Withdrawn" => "rd-status rd-status--pending",
+        "Cancelled" => "rd-status rd-status--cancelled",
+        "Completed" => "rd-status rd-status--neutral",
+        _ => "rd-status rd-status--neutral"
+    };
+}
+<span class="@cssClass">@status</span>
