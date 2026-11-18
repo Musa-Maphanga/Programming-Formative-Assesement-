@@ -1,0 +1,241 @@
+name: Validate Repository Structure
+
+on:
+  push:
+    branches: [ main, develop, part-2, part-3 ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Part 1 - the planning artefacts have to be in /docs
+  # ---------------------------------------------------------------------------
+  structure:
+    name: Docs folder and planning artefacts
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: /docs folder exists
+        run: |
+          if [ ! -d "docs" ]; then
+            echo "::error::The /docs folder is missing from the repository root."
+            exit 1
+          fi
+          ls -la docs
+
+      - name: ERD is present as PNG or PDF
+        run: |
+          ls docs/*ERD*.png docs/*ERD*.pdf >/dev/null 2>&1 \
+            || { echo "::error::No ERD found in /docs."; exit 1; }
+
+      - name: API endpoint plan is present
+        run: |
+          ls docs/*Endpoint*.md docs/*Endpoint*.pdf >/dev/null 2>&1 \
+            || { echo "::error::No API endpoint plan found in /docs."; exit 1; }
+
+      - name: Endpoint plan covers every required area
+        run: |
+          PLAN=$(ls docs/*Endpoint*.md 2>/dev/null | head -n 1)
+          [ -n "$PLAN" ] || exit 0
+          MISSING=0
+          for AREA in "auth" "users" "events" "categories" "enrolments" "results"; do
+            grep -qi "/api/$AREA" "$PLAN" || {
+              echo "::error::The endpoint plan has no routes for /api/$AREA"; MISSING=1; }
+          done
+          exit $MISSING
+
+      - name: SQL script is present and complete
+        run: |
+          SQL=$(ls docs/*.sql 2>/dev/null | head -n 1)
+          [ -n "$SQL" ] || { echo "::error::No .sql script found in /docs."; exit 1; }
+
+          TABLES=$(grep -ci "CREATE TABLE" "$SQL")
+          echo "CREATE TABLE statements: $TABLES"
+          [ "$TABLES" -ge 6 ] || { echo "::error::Fewer than six tables in the script."; exit 1; }
+
+          grep -qi "PRIMARY KEY" "$SQL" || { echo "::error::No PRIMARY KEY constraints."; exit 1; }
+          grep -qi "FOREIGN KEY" "$SQL" || { echo "::error::No FOREIGN KEY constraints."; exit 1; }
+          grep -qi "INSERT INTO" "$SQL" || { echo "::error::No seed data."; exit 1; }
+
+      - name: README exists and is not a stub
+        run: |
+          [ -f "README.md" ] || { echo "::error::README.md is missing."; exit 1; }
+          LINES=$(wc -l < README.md)
+          [ "$LINES" -ge 20 ] || { echo "::error::README.md looks like a stub ($LINES lines)."; exit 1; }
+
+  # ---------------------------------------------------------------------------
+  # Part 1 - the script still runs clean on an empty SQL Server
+  # ---------------------------------------------------------------------------
+  sql-script:
+    name: SQL script runs on a clean SQL Server
+    runs-on: ubuntu-latest
+    needs: structure
+
+    env:
+      SA_PASSWORD: RaceDay#2026!Build
+      SQLCMD: /opt/mssql-tools18/bin/sqlcmd
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Start SQL Server 2022
+        run: |
+          docker run -d --name raceday-sql \
+            -e "ACCEPT_EULA=Y" \
+            -e "MSSQL_SA_PASSWORD=${SA_PASSWORD}" \
+            -e "MSSQL_PID=Developer" \
+            -p 1433:1433 \
+            mcr.microsoft.com/mssql/server:2022-latest
+
+      - name: Wait for the instance to accept connections
+        run: |
+          for i in $(seq 1 40); do
+            if docker exec raceday-sql $SQLCMD -S localhost -U sa -P "$SA_PASSWORD" -C -Q "SELECT 1" >/dev/null 2>&1; then
+              echo "SQL Server ready after ${i} attempts."
+              exit 0
+            fi
+            sleep 3
+          done
+          echo "::error::SQL Server did not start in time."
+          docker logs raceday-sql
+          exit 1
+
+      - name: Execute the RaceDay script
+        run: |
+          SQL=$(ls docs/*.sql | head -n 1)
+          docker cp "$SQL" raceday-sql:/tmp/raceday.sql
+          docker exec raceday-sql $SQLCMD -S localhost -U sa -P "$SA_PASSWORD" -C -b -i /tmp/raceday.sql
+
+      - name: Confirm the script is re-runnable
+        run: docker exec raceday-sql $SQLCMD -S localhost -U sa -P "$SA_PASSWORD" -C -b -i /tmp/raceday.sql
+
+      - name: Tear down
+        if: always()
+        run: docker rm -f raceday-sql || true
+
+  # ---------------------------------------------------------------------------
+  # Part 2 - the API builds
+  # ---------------------------------------------------------------------------
+  api-build:
+    name: Build the API
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore
+        run: dotnet restore src/RaceDay.Api/RaceDay.Api.csproj
+
+      - name: Build
+        run: dotnet build src/RaceDay.Api/RaceDay.Api.csproj --configuration Release --no-restore
+
+      - name: No secrets committed in appsettings
+        run: |
+          # An Azure connection string or a real JWT key in source control would be a
+          # finding in any code review, so the build fails on one.
+          if grep -qiE "AccountKey=[A-Za-z0-9+/]{20,}" src/RaceDay.Api/appsettings*.json; then
+            echo "::error::An Azure storage account key is committed in appsettings."
+            exit 1
+          fi
+
+  # ---------------------------------------------------------------------------
+  # Part 3 - the MVC project builds, has no database access, and runs in Docker
+  # ---------------------------------------------------------------------------
+  mvc-build:
+    name: Build the MVC web application
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: part3
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore
+        run: dotnet restore RaceDay.Web/RaceDay.Web.csproj
+
+      - name: Build
+        run: dotnet build RaceDay.Web/RaceDay.Web.csproj --configuration Release --no-restore
+
+      - name: Publish
+        run: dotnet publish RaceDay.Web/RaceDay.Web.csproj --configuration Release --no-build -o ./publish
+
+      - name: The MVC project must not touch the database directly
+        run: |
+          # The brief requires the web project to go through the API for all data. A
+          # reference to EF Core, a SQL client or a connection string would mean that
+          # rule had been broken, so the build fails on one.
+          FOUND=0
+
+          if grep -rniE "EntityFrameworkCore|System\.Data\.SqlClient|Microsoft\.Data\.SqlClient|DbContext" \
+               --include="*.cs" --include="*.csproj" RaceDay.Web; then
+            echo "::error::Found direct database access in the MVC project."
+            FOUND=1
+          fi
+
+          if grep -rniE "Server=.*Database=|Data Source=.*Initial Catalog=" \
+               --include="*.json" --include="*.cs" RaceDay.Web; then
+            echo "::error::Found a database connection string in the MVC project."
+            FOUND=1
+          fi
+
+          exit $FOUND
+
+      - name: Blob Storage must be reached through the API, not from the MVC app
+        run: |
+          if grep -rniE "Azure\.Storage|BlobServiceClient|DefaultEndpointsProtocol=" \
+               --include="*.cs" --include="*.csproj" --include="*.json" RaceDay.Web; then
+            echo "::error::The MVC project appears to contact Azure Blob Storage directly."
+            exit 1
+          fi
+
+      - name: Dockerfile is present and well formed
+        run: |
+          [ -f Dockerfile ] || { echo "::error::No Dockerfile in the Part 3 folder."; exit 1; }
+          grep -q "AS build" Dockerfile || { echo "::error::Not a multi-stage build."; exit 1; }
+          grep -q "^USER " Dockerfile || { echo "::error::The container runs as root."; exit 1; }
+          grep -q "ENTRYPOINT" Dockerfile || { echo "::error::No ENTRYPOINT."; exit 1; }
+
+      - name: Build the Docker image
+        run: docker build -t raceday-web:ci .
+
+      - name: Start the container and check it answers
+        run: |
+          docker run -d --name raceday-web -p 8080:8080 \
+            -e RaceDayApi__BaseUrl=http://localhost:5001 \
+            raceday-web:ci
+
+          for i in $(seq 1 20); do
+            if curl -fsS http://localhost:8080/health >/dev/null 2>&1; then
+              echo "The containerised application is serving requests."
+              curl -s http://localhost:8080/health
+              exit 0
+            fi
+            sleep 2
+          done
+
+          echo "::error::The container did not answer on /health."
+          docker logs raceday-web
+          exit 1
+
+      - name: Tear down
+        if: always()
+        run: docker rm -f raceday-web || true
