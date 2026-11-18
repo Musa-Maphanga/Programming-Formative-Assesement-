@@ -1,0 +1,35 @@
+@{
+    var code = ViewData["Code"] as int? ?? 0;
+}
+
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-6">
+            <div class="rd-panel rd-panel-pad my-5 text-center">
+                <span class="rd-figure rd-figure-xl d-block mb-2">@code</span>
+
+                @if (code == 404)
+                {
+                    <h1 class="mb-2">That page is not here</h1>
+                    <p class="rd-lede mx-auto mb-4">
+                        The race may have been removed, or the link may be out of date.
+                    </p>
+                }
+                else if (code == 403)
+                {
+                    <h1 class="mb-2">You cannot open that page</h1>
+                    <p class="rd-lede mx-auto mb-4">Your account does not have access to it.</p>
+                }
+                else
+                {
+                    <h1 class="mb-2">Something went wrong</h1>
+                    <p class="rd-lede mx-auto mb-4">
+                        The request did not complete. Trying again often clears it.
+                    </p>
+                }
+
+                <a class="btn btn-rd" asp-controller="Home" asp-action="Index">Back to RaceDay</a>
+            </div>
+        </div>
+    </div>
+</div>
