@@ -17,6 +17,8 @@ builder.Services.AddDbContext<RaceDayDbContext>(options =>
 
 // Services
 builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection(JwtSettings.SectionName));
+builder.Services.Configure<AzureStorageSettings>(builder.Configuration.GetSection(AzureStorageSettings.SectionName));
+builder.Services.AddSingleton<IImageStorage, AzureBlobImageStorage>();
 builder.Services.AddScoped<IPasswordHasher, BcryptPasswordHasher>();
 builder.Services.AddScoped<ITokenService, JwtTokenService>();
 builder.Services.AddHttpClient<IWeatherService, OpenMeteoWeatherService>(client =>
