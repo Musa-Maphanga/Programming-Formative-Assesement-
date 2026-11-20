@@ -29,13 +29,22 @@ jobs:
 
       - name: ERD is present as PNG or PDF
         run: |
-          ls docs/*ERD*.png docs/*ERD*.pdf >/dev/null 2>&1 \
-            || { echo "::error::No ERD found in /docs."; exit 1; }
+          # Matched by name rather than by globbing two patterns at ls: with
+          # `ls a b`, a missing second pattern fails the step even when the
+          # first one matched.
+          if ! ls docs | grep -qiE 'erd.*\.(png|pdf)$'; then
+            echo "::error::No ERD found in /docs."
+            exit 1
+          fi
+          echo "ERD: $(ls docs | grep -iE 'erd.*\.(png|pdf)$' | tr '\n' ' ')"
 
       - name: API endpoint plan is present
         run: |
-          ls docs/*Endpoint*.md docs/*Endpoint*.pdf >/dev/null 2>&1 \
-            || { echo "::error::No API endpoint plan found in /docs."; exit 1; }
+          if ! ls docs | grep -qiE 'endpoint.*\.(md|pdf)$'; then
+            echo "::error::No API endpoint plan found in /docs."
+            exit 1
+          fi
+          echo "Endpoint plan: $(ls docs | grep -iE 'endpoint.*\.(md|pdf)$' | tr '\n' ' ')"
 
       - name: Endpoint plan covers every required area
         run: |
