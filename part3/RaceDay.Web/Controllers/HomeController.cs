@@ -16,6 +16,8 @@ public class HomeController : Controller
     {
         var session = HttpContext.Session;
 
+        if (!session.IsSignedIn()) return RedirectToAction("Login", "Account");
+
         if (session.IsOrganiser()) return RedirectToAction("Index", "Organiser");
 
         return RedirectToAction("Index", "Events");

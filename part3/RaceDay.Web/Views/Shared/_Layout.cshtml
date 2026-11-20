@@ -41,7 +41,8 @@
                 <ul class="navbar-nav me-auto">
                     @if (!signedIn)
                     {
-                        <li class="nav-item"><a class="@NavClass("Events")" asp-controller="Events" asp-action="Index">Find a race</a></li>
+                        @* Nothing here: every page behind the masthead needs a token,
+                           so an anonymous visitor is offered sign-in instead. *@
                     }
                     else if (role == Roles.Organiser)
                     {

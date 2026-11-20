@@ -7,9 +7,14 @@ using RaceDay.Web.Services;
 namespace RaceDay.Web.Controllers;
 
 /// <summary>
-/// Public browsing and the participant's entry flow. Anyone can look; only a
-/// signed-in participant can enter.
+/// Browsing races and the participant's entry flow.
+///
+/// The Part 2 API requires a token on every events endpoint, so browsing is
+/// for signed-in users. Anonymous visitors are sent to sign in with a return
+/// address, which is also what the brief asks for: unauthenticated users must
+/// not reach protected pages.
 /// </summary>
+[RequireRole]
 public class EventsController : RaceDayControllerBase
 {
     private readonly IRaceDayApiClient _api;
